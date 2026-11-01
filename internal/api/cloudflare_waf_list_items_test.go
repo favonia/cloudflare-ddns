@@ -630,6 +630,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse %q as an IP range: %v", "invalid item", gomock.Any()),
 					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Also failed to parse %q as an IP address: %v", "invalid item", gomock.Any()),
 					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Found an invalid IP range or IP address %q in the list %s", "invalid item", "account456/list"),
+					ppfmt.EXPECT().Noticef(pp.EmojiDeletion, gomock.Regex("Removal completed.*%s"), "account456/list"),
 				)
 			},
 		},
@@ -652,7 +653,22 @@ func TestDeleteWAFListItems(t *testing.T) {
 					"description",
 					tc.idsToDelete,
 				)
-				require.Equal(t, tc.ok, ok)
+				require.Equal(t, tc.ok, ok.OK)
+				wantStatus := api.WAFBatchNoEffect
+				switch name {
+				case "success", "missing-list/create-list-and-items", "list-items-invalid":
+					wantStatus = api.WAFBatchCompleted
+				case "delete-fail", "create-fail":
+					wantStatus = api.WAFBatchUnconfirmed
+				}
+				require.Equal(t, wantStatus, ok.Status)
+				returned := ok.Returned
+				if tc.ok && name != "empty" {
+					require.NotNil(t, returned, "successful response must retain actual returned content")
+					require.Len(t, returned.Items, len(tc.listItemsResponse))
+				} else {
+					require.Nil(t, returned, "unknown return content must remain unknown")
+				}
 				assertHandlersExhausted(t, lh, dih, lih)
 
 				if tc.ok {
@@ -665,7 +681,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 						"description",
 						tc.idsToDelete,
 					)
-					require.Equal(t, tc.ok, ok)
+					require.Equal(t, tc.ok, ok.OK)
 					assertHandlersExhausted(t, lh, dih, lih)
 				}
 			})
@@ -820,6 +836,7 @@ func TestCreateWAFListItems(t *testing.T) {
 					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Failed to parse %q as an IP range: %v", "invalid item", gomock.Any()),
 					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Also failed to parse %q as an IP address: %v", "invalid item", gomock.Any()),
 					ppfmt.EXPECT().Noticef(pp.EmojiImpossible, "Found an invalid IP range or IP address %q in the list %s", "invalid item", "account456/list"),
+					ppfmt.EXPECT().Noticef(pp.EmojiCreation, gomock.Regex("Addition completed.*%s"), "account456/list"),
 				)
 			},
 		},
@@ -845,7 +862,22 @@ func TestCreateWAFListItems(t *testing.T) {
 				cih.setRequestLimit(tc.createRequestLimit)
 				lih.setRequestLimit(tc.listItemsRequestLimit)
 				ok := f.cfHandle.CreateWAFListItems(context.Background(), f.newPreparedPP(tc.prepareMocks), mockWAFList, "description", tc.itemsToCreate)
-				require.Equal(t, tc.ok, ok)
+				require.Equal(t, tc.ok, ok.OK)
+				wantStatus := api.WAFBatchNoEffect
+				switch name {
+				case "success", "missing-list/create-list-and-items", "list-items-invalid":
+					wantStatus = api.WAFBatchCompleted
+				case "delete-fail", "create-fail":
+					wantStatus = api.WAFBatchUnconfirmed
+				}
+				require.Equal(t, wantStatus, ok.Status)
+				returned := ok.Returned
+				if tc.ok && name != "empty" {
+					require.NotNil(t, returned, "successful response must retain actual returned content")
+					require.Len(t, returned.Items, len(tc.listItemsResponse))
+				} else {
+					require.Nil(t, returned, "unknown return content must remain unknown")
+				}
 				assertHandlersExhausted(t, lh, clh, cih, lih)
 
 				if tc.ok {
@@ -853,7 +885,7 @@ func TestCreateWAFListItems(t *testing.T) {
 					cih.setRequestLimit(tc.createRequestLimit)
 					lih.setRequestLimit(tc.listItemsRequestLimit)
 					ok = f.cfHandle.CreateWAFListItems(context.Background(), f.newPP(), mockWAFList, "description", tc.itemsToCreate)
-					require.Equal(t, tc.ok, ok)
+					require.Equal(t, tc.ok, ok.OK)
 					assertHandlersExhausted(t, lh, clh, cih, lih)
 				}
 			})
@@ -897,7 +929,7 @@ func TestCreateWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 		ppfmt := f.newPP()
 		ppfmt.EXPECT().Noticef(pp.EmojiCreation, "Created a new list %s", "account456/list")
 
-		ok = f.cfHandle.CreateWAFListItems(context.Background(), ppfmt, mockWAFList, "description", itemsToCreate)
+		ok = f.cfHandle.CreateWAFListItems(context.Background(), ppfmt, mockWAFList, "description", itemsToCreate).OK
 		require.True(t, ok)
 		assertHandlersExhausted(t, lh, clh, cih, lih)
 	})
@@ -945,8 +977,67 @@ func TestDeleteWAFListItemsUnexpectedCommentAfterMutation(t *testing.T) {
 			mockWAFList,
 			"description",
 			[]api.ID{"id1"},
-		)
+		).OK
 		require.True(t, ok)
 		assertHandlersExhausted(t, lh, dih, lih)
 	})
+}
+
+// A completed write invalidates input inventory even when its returned contents
+// cannot be parsed. A following read must not reuse the pre-mutation snapshot.
+func TestWAFMalformedMutationResponseInvalidatesInputCache(t *testing.T) {
+	t.Parallel()
+	for _, action := range []string{"create", "delete"} {
+		t.Run(action, func(t *testing.T) {
+			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				f := newCloudflareHarness(t)
+				lh := newListListsHandler(t, f.serveMux, []listMeta{{name: "list", size: 1, kind: cloudflare.ListTypeIP}})
+				old := listItem{ID: "old", Prefix: "192.0.2.1/32", Comment: ""}
+				added := listItem{ID: "new", Prefix: "192.0.2.2/32", Comment: ""}
+				var after []listItem
+				var mutation func() api.WAFBatchResult
+				var mh httpHandler
+				if action == "create" {
+					after = []listItem{old, added}
+					request := []api.WAFListCreateItem{{Prefix: netip.MustParsePrefix(added.Prefix), Comment: ""}}
+					mh = newCreateListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), request)
+					mutation = func() api.WAFBatchResult {
+						return f.cfHandle.CreateWAFListItems(context.Background(), pp.NewSilent(), mockWAFList, "description", request)
+					}
+				} else {
+					request := []api.ID{old.ID}
+					mh = newDeleteListItemsHandler(t, f.serveMux, mockID("list", 0), mockID("op", 0), request)
+					mutation = func() api.WAFBatchResult {
+						return f.cfHandle.DeleteWAFListItems(context.Background(), pp.NewSilent(), mockWAFList, "description", request)
+					}
+				}
+				lih := newListListItemsHandlerSequence(t, f.serveMux, mockID("list", 0), [][]listItem{
+					{old}, {{ID: "malformed", Prefix: "invalid item", Comment: ""}}, after,
+				})
+				lh.setRequestLimit(1)
+				mh.setRequestLimit(1)
+				lih.setRequestLimit(3)
+				initial, exists, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), pp.NewSilent(), mockWAFList, "description", "")
+				require.True(t, ok)
+				require.True(t, exists)
+				require.False(t, cached)
+				require.Len(t, initial, 1)
+				result := mutation()
+				require.Equal(t, api.WAFBatchCompleted, result.Status)
+				require.False(t, result.OK)
+				require.Nil(t, result.Returned)
+				current, exists, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), pp.NewSilent(), mockWAFList, "description", "")
+				require.True(t, ok)
+				require.True(t, exists)
+				assert.False(t, cached, "completed mutation must retire the pre-mutation inventory")
+				want := make([]api.WAFListItem, 0, len(after))
+				for _, item := range after {
+					want = append(want, api.WAFListItem{ID: item.ID, Prefix: netip.MustParsePrefix(item.Prefix), Comment: item.Comment})
+				}
+				require.Equal(t, want, current)
+				assertHandlersExhausted(t, lh, mh, lih)
+			})
+		})
+	}
 }

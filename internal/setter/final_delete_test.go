@@ -4,6 +4,7 @@ package setter_test
 
 import (
 	"context"
+	"net/netip"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -68,7 +69,6 @@ func TestFinalDelete(t *testing.T) {
 					}, true, true),
 					expectRecordDelete(
 						ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record1, api.FinalDeletionMode, false),
-					expectRecordFinalDeleteFailedNotice(p, fixture.ipFamily, fixture.domain),
 				)
 			},
 		},
@@ -82,7 +82,7 @@ func TestFinalDelete(t *testing.T) {
 					}, true, true),
 					h.EXPECT().DeleteRecord(
 						ctx, p, fixture.ipFamily, fixture.domain, fixture.record1, api.FinalDeletionMode).
-						Do(wrapCancelAsDelete(cancel)).Return(false),
+						Do(wrapCancelAsDelete(cancel)).Return(api.RecordMutation{Status: api.MutationUnconfirmed, Kind: api.RecordDelete, Record: api.RecordFact{ID: fixture.record1, IP: netip.Addr{}}, Membership: api.MembershipUnknown}),
 					expectRecordDeleteTimeoutInfo(p, fixture.ipFamily, fixture.domain),
 				)
 			},
@@ -126,7 +126,7 @@ func TestFinalDelete(t *testing.T) {
 			h.prepare(ctx, tc.prepareMocks)
 
 			resp := h.setter.FinalDelete(ctx, h.mockPP, fixture.ipFamily, fixture.domain, fixture.params)
-			require.Equal(t, tc.resp, resp)
+			require.Equal(t, tc.resp, resp.Code)
 		})
 	}
 }

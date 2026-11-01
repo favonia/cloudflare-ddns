@@ -49,6 +49,12 @@ type Setter interface {
 	// Invariant: IPs must already be canonical and represent a deterministic set:
 	// - each IP is valid, unzoned, and matches IPNetwork
 	// - IPs are sorted by [netip.Addr.Compare] and deduplicated
+	//
+	// The returned DNSResult owns Before and Progress whenever the initial read
+	// succeeds, including a known-empty/no-op result; both are nil on read failure.
+	// Progress separates already-covered targets from required operations and
+	// preserves unvisited work after the first unsuccessful operation. Effects
+	// contains only reached completed/unconfirmed API mutations.
 	SetIPs(
 		ctx context.Context,
 		ppfmt pp.PP,
@@ -56,16 +62,20 @@ type Setter interface {
 		Domain domain.Domain,
 		IPs []netip.Addr,
 		fallbackParams api.RecordParams,
-	) ResponseCode
+	) DNSResult
 
 	// FinalDelete removes DNS records of a particular domain.
+	// The returned DNSResult has the same ownership and initial-read distinctions
+	// as SetIPs. Progress retains each deletion's original record identity/address.
+	// Ordinary failures allow later deletions; cancellation after a failed deletion
+	// leaves the remaining required operations unattempted.
 	FinalDelete(
 		ctx context.Context,
 		ppfmt pp.PP,
 		ipFamily ipnet.Family,
 		Domain domain.Domain,
 		fallbackParams api.RecordParams,
-	) ResponseCode
+	) DNSResult
 
 	// SetWAFList reconciles one WAF list against family target states.
 	//
@@ -81,6 +91,9 @@ type Setter interface {
 	//   target set (sorted, deduplicated)
 	// - when the list is missing, preserve/unavailable/explicit-empty families do
 	//   not force structural creation by themselves
+	//
+	// WAFResult owns full admitted input and ordered planned/reached batches,
+	// including required unvisited work after failure. No new reads are added.
 	SetWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,
@@ -88,10 +101,11 @@ type Setter interface {
 		listDescription string,
 		targetsByFamily map[ipnet.Family]WAFTargets,
 		fallbackItemComment string,
-	) ResponseCode
+	) WAFResult
 
 	// FinalClearWAFList removes managed WAF content in managed family scope.
 	// mode controls waiting for asynchronous cleanup operations (see api.CleanupMode).
+	// WAFResult retains owned cleanup stages even when no initial contents were read.
 	FinalClearWAFList(
 		ctx context.Context,
 		ppfmt pp.PP,
@@ -99,5 +113,5 @@ type Setter interface {
 		listDescription string,
 		managedFamilies map[ipnet.Family]bool,
 		mode api.CleanupMode,
-	) ResponseCode
+	) WAFResult
 }

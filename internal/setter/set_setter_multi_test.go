@@ -139,7 +139,6 @@ func TestSetIPs(t *testing.T) {
 					),
 					expectRecordUpdatedNotice(p, fixture.ipFamily, fixture.domain, fixture.record2),
 					expectRecordDelete(ctx, p, h, fixture.ipFamily, fixture.domain, fixture.record3, api.RegularDeletionMode, false),
-					expectRecordSetFailedNotice(p, fixture.ipFamily, fixture.domain),
 				)
 			},
 		},
@@ -168,7 +167,7 @@ func TestSetIPs(t *testing.T) {
 			h.prepare(ctx, tc.prepareMocks)
 
 			resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, tc.ips, fixture.params)
-			require.Equal(t, tc.resp, resp)
+			require.Equal(t, tc.resp, resp.Code)
 		})
 	}
 }
@@ -198,7 +197,7 @@ func TestSetIPsCreateDoesNotInheritMetadataFromDeletedDuplicate(t *testing.T) {
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1, targetCreate}, fixture.params)
-	require.Equal(t, setter.ResponseUpdated, resp)
+	require.Equal(t, setter.ResponseUpdated, resp.Code)
 }
 
 func TestSetIPsDuplicateKeeperUsesLowestID(t *testing.T) {
@@ -216,7 +215,7 @@ func TestSetIPsDuplicateKeeperUsesLowestID(t *testing.T) {
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
-	require.Equal(t, setter.ResponseNoop, resp)
+	require.Equal(t, setter.ResponseNoop, resp.Code)
 }
 
 func TestSetIPsDuplicateKeeperUsesLowestIDWithinMetadataMatchingSubset(t *testing.T) {
@@ -239,7 +238,7 @@ func TestSetIPsDuplicateKeeperUsesLowestIDWithinMetadataMatchingSubset(t *testin
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
-	require.Equal(t, setter.ResponseNoop, resp)
+	require.Equal(t, setter.ResponseNoop, resp.Code)
 }
 
 func TestSetIPsMatchedMetadataReconciliationUpdateFailure(t *testing.T) {
@@ -262,7 +261,7 @@ func TestSetIPsMatchedMetadataReconciliationUpdateFailure(t *testing.T) {
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
-	require.Equal(t, setter.ResponseNoop, resp)
+	require.Equal(t, setter.ResponseNoop, resp.Code)
 }
 
 func TestSetIPsOutdatedOperationsBeforeMatchedUpdateAndDelete(t *testing.T) {
@@ -302,7 +301,7 @@ func TestSetIPsOutdatedOperationsBeforeMatchedUpdateAndDelete(t *testing.T) {
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1, fixture.ip2}, fixture.params)
-	require.Equal(t, setter.ResponseUpdated, resp)
+	require.Equal(t, setter.ResponseUpdated, resp.Code)
 }
 
 func TestSetIPsOutdatedDeleteBeforeMatchedUpdate(t *testing.T) {
@@ -332,7 +331,7 @@ func TestSetIPsOutdatedDeleteBeforeMatchedUpdate(t *testing.T) {
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
-	require.Equal(t, setter.ResponseUpdated, resp)
+	require.Equal(t, setter.ResponseUpdated, resp.Code)
 }
 
 func TestSetIPsDuplicateDeletionPrioritizesNonMatchingAcrossTargets(t *testing.T) {
@@ -362,7 +361,7 @@ func TestSetIPsDuplicateDeletionPrioritizesNonMatchingAcrossTargets(t *testing.T
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1, fixture.ip2}, fixture.params)
-	require.Equal(t, setter.ResponseNoop, resp)
+	require.Equal(t, setter.ResponseNoop, resp.Code)
 }
 
 func TestSetIPsOutdatedRecycleUsesLowestIDTieBreak(t *testing.T) {
@@ -406,7 +405,7 @@ func TestSetIPsOutdatedRecycleUsesLowestIDTieBreak(t *testing.T) {
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1, fixture.ip2}, fixture.params)
-	require.Equal(t, setter.ResponseUpdated, resp)
+	require.Equal(t, setter.ResponseUpdated, resp.Code)
 }
 
 func TestSetIPsRecycleUsesReconciledOutdatedMetadata(t *testing.T) {
@@ -441,7 +440,7 @@ func TestSetIPsRecycleUsesReconciledOutdatedMetadata(t *testing.T) {
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
-	require.Equal(t, setter.ResponseUpdated, resp)
+	require.Equal(t, setter.ResponseUpdated, resp.Code)
 }
 
 func TestSetIPsDuplicateCanonicalTagsWarnOnImpossibleCases(t *testing.T) {
@@ -468,7 +467,7 @@ func TestSetIPsDuplicateCanonicalTagsWarnOnImpossibleCases(t *testing.T) {
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1, targetCreate}, fixture.params)
-	require.Equal(t, setter.ResponseUpdated, resp)
+	require.Equal(t, setter.ResponseUpdated, resp.Code)
 }
 
 func TestSetIPsDuplicateCanonicalTagsImpossibleWarningsAreNotDeduped(t *testing.T) {
@@ -523,7 +522,7 @@ func TestSetIPsDuplicateCanonicalTagsImpossibleWarningsAreNotDeduped(t *testing.
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1, targetCreate}, fixture.params)
-	require.Equal(t, setter.ResponseUpdated, resp)
+	require.Equal(t, setter.ResponseUpdated, resp.Code)
 }
 
 func TestSetIPsRepeatedKeeperIDWarnsAndReturnsNoop(t *testing.T) {
@@ -542,7 +541,7 @@ func TestSetIPsRepeatedKeeperIDWarnsAndReturnsNoop(t *testing.T) {
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
-	require.Equal(t, setter.ResponseNoop, resp)
+	require.Equal(t, setter.ResponseNoop, resp.Code)
 }
 
 func TestSetIPsNonMatchingDuplicateCleanupTimeoutReturnsUpdated(t *testing.T) {
@@ -566,7 +565,7 @@ func TestSetIPsNonMatchingDuplicateCleanupTimeoutReturnsUpdated(t *testing.T) {
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
-	require.Equal(t, setter.ResponseNoop, resp)
+	require.Equal(t, setter.ResponseNoop, resp.Code)
 }
 
 func TestSetIPsWarnsAmbiguousTagsFromOutdatedSources(t *testing.T) {
@@ -618,5 +617,5 @@ func TestSetIPsWarnsAmbiguousTagsFromOutdatedSources(t *testing.T) {
 	)
 
 	resp := h.setter.SetIPs(ctx, h.mockPP, fixture.ipFamily, fixture.domain, []netip.Addr{fixture.ip1}, fixture.params)
-	require.Equal(t, setter.ResponseUpdated, resp)
+	require.Equal(t, setter.ResponseUpdated, resp.Code)
 }

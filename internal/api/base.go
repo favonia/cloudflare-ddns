@@ -126,32 +126,37 @@ type Handle interface {
 	// The managed-record selector is bound into the handle options because
 	// implementations may cache filtered records by domain/IP-family scope.
 	//
+	// The returned records are borrowed and may change during mutations; callers
+	// retaining facts must copy them before mutating. Successful listings preserve
+	// provider identities without checking empty IDs or conflicting duplicate IDs;
+	// consumers requiring a coherent identity map must conservatively handle these.
 	// The second return value indicates whether the list was cached.
 	ListRecords(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
 		fallbackParams RecordParams,
 	) ([]Record, bool, bool)
 
-	// UpdateRecord reconciles one managed DNS record to the desired state.
-	//
-	// Implementations must apply the desired DNS content and metadata in
-	// desiredParams for this record:
-	// - content/IP: ip
-	// - ttl/proxied/comment/tags: desiredParams
+	// UpdateRecord requests reconciliation of one DNS record to ip and the
+	// TTL, proxy, comment, and tag values in desiredParams. Completion and
+	// returned membership are separate evidence; requested metadata alone does
+	// not establish that the resulting record matches the managed selector.
+	// See RecordMutation for the returned address and membership guarantees.
 	UpdateRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
 		id ID, ip netip.Addr, desiredParams RecordParams,
-	) bool
+	) RecordMutation
 
-	// CreateRecord creates one managed DNS record with the given desired metadata.
-	// It returns the ID of the new record.
+	// CreateRecord requests creation of one DNS record with ip and desiredParams.
+	// Its result distinguishes completion from returned managed membership;
+	// requesting creation does not guarantee admission to the managed set.
+	// See RecordMutation for the returned address and membership guarantees.
 	CreateRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
-		ip netip.Addr, desiredParams RecordParams) (ID, bool)
+		ip netip.Addr, desiredParams RecordParams) RecordMutation
 
 	// DeleteRecord deletes one managed DNS record by ID.
 	//
 	// mode controls cache invalidation behavior for failure handling.
 	DeleteRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family,
 		domain domain.Domain, id ID, mode DeletionMode,
-	) bool
+	) RecordMutation
 
 	// ListWAFListItems returns managed WAF list items with their IP ranges.
 	// It does not create the list if it does not exist.
@@ -161,8 +166,16 @@ type Handle interface {
 	// fallbackItemComment is the fallback comment target for newly created
 	// managed list items; implementations may use it for advisory mismatch hints.
 	//
+	// After a dispatched item mutation, implementations must replace the item
+	// cache with usable returned contents or invalidate it, including when the
+	// mutation completed but its response could not be parsed. A later listing
+	// must not reuse that pre-mutation inventory. This does not promise freshness
+	// against changes made outside this handle.
+	//
 	// The second return value indicates whether the list already exists.
 	// The third return value indicates whether the list content was cached.
+	// The fourth indicates success; false leaves item contents unknown. Items may
+	// borrow cache storage: consumers retaining evidence must copy at admission.
 	ListWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, fallbackDescription, fallbackItemComment string,
 	) ([]WAFListItem, bool, bool, bool)
 
@@ -174,17 +187,22 @@ type Handle interface {
 	// calling this method.
 	// CleanupWait never returns WAFListCleanupUpdating. If deleting an eligible
 	// whole list fails, completed fallback item deletion still counts as success.
+	// The result owns admitted contents and reached cleanup stages; it never
+	// adds a read to populate evidence. See WAFCleanupResult for read chronology.
 	FinalCleanWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
 		fallbackDescription string, managedFamilies map[ipnet.Family]bool, mode CleanupMode,
-	) WAFListCleanupCode
+	) WAFCleanupResult
 
 	// DeleteWAFListItems deletes managed WAF list items by item IDs.
-	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, fallbackDescription string, ids []ID) bool
+	// The result preserves the work Boolean independently of completion and
+	// actual returned managed membership. Empty input succeeds without dispatch.
+	DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, fallbackDescription string, ids []ID) WAFBatchResult
 
 	// CreateWAFListItems creates managed WAF list items with the given prefixes
-	// and per-item comments.
+	// and per-item comments. The result preserves the work Boolean independently
+	// of completion and returned membership. Empty input succeeds without dispatch.
 	CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list WAFList, fallbackDescription string,
-		items []WAFListCreateItem) bool
+		items []WAFListCreateItem) WAFBatchResult
 }
 
 // An Auth contains authentication information.

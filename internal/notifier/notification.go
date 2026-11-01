@@ -16,6 +16,7 @@ const (
 	KindCleanup           Kind = "cleanup"
 	KindCleanupFailure    Kind = "cleanup failure"
 	KindShutdown          Kind = "shutdown"
+	KindStateObservation  Kind = "state observation"
 )
 
 // Notification is a message with metadata describing its purpose.
@@ -58,6 +59,8 @@ func (n Notification) description(ppfmt pp.PP) string {
 		return "a cleanup failure notification"
 	case KindShutdown:
 		return "a shutdown notification"
+	case KindStateObservation:
+		return "a notification"
 	default:
 		ppfmt.Noticef(pp.EmojiImpossible,
 			"Unknown notification type %q; this should not happen. Please report it at %s",

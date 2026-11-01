@@ -21,7 +21,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/ipfilter"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
-	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
@@ -86,6 +85,12 @@ func initUpdateConfig() *config.UpdateConfig {
 		domain6:   false,
 	}
 	return conf
+}
+
+// Check the public heartbeat contract without coupling to private semantic evidence.
+func requirePublicMessageEqual(t *testing.T, want, got updater.Message) {
+	t.Helper()
+	require.Equal(t, want.HeartbeatMessage, got.HeartbeatMessage)
 }
 
 func hostID6Literal(t *testing.T, text string) hostid6.Derivation {
@@ -270,7 +275,6 @@ func TestUpdateIPsMultiple(t *testing.T) {
 	for name, tc := range map[string]struct {
 		ok               bool
 		monitorMessages  []string
-		notifierMessages []string
 		providerEnablers providerEnablers
 		prepareMocks     func(*mocks.MockPP, mockProviders, *mocks.MockSetter)
 	}{
@@ -280,24 +284,20 @@ func TestUpdateIPsMultiple(t *testing.T) {
 				"Could not confirm that A records for ip4.hello2 were updated to 127.0.0.1, 127.0.0.2",
 				"Could not confirm update of WAF list(s) xxxxxxxx/list2",
 			},
-			[]string{
-				"Could not confirm that A records for ip4.hello2 were updated to 127.0.0.1 and 127.0.0.2; updating A records for ip4.hello1 to 127.0.0.1 and 127.0.0.2; updated A records for ip4.hello4 to 127.0.0.1 and 127.0.0.2.",
-				`Could not confirm update of WAF list(s) xxxxxxxx/list2; updating 12341234/list1; updated zzz/list4.`,
-			},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(detectionResult(ipnet.IP4, ip4Targets)),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %d %s addresses: %s", 2, "IPv4", "127.0.0.1, 127.0.0.2"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), ip4Targets, params).Return(setter.ResponseUpdating),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2"), ip4Targets, params).Return(setter.ResponseFailed),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3"), ip4Targets, params).Return(setter.ResponseNoop),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4"), ip4Targets, params).Return(setter.ResponseUpdated),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list1, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.ResponseUpdating),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list2, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.ResponseFailed),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list3, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list4, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.ResponseUpdated),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), ip4Targets, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2"), ip4Targets, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseFailed, Before: nil, Effects: nil}),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3"), ip4Targets, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4"), ip4Targets, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list1, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdating}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list2, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseFailed}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list3, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list4, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
 				)
 			},
 		},
@@ -308,24 +308,20 @@ func TestUpdateIPsMultiple(t *testing.T) {
 				"Updating WAF list(s) 12341234/list1",
 				"Updated WAF list(s) AAAAAAAA/list3, zzz/list4",
 			},
-			[]string{
-				"Updated A records for ip4.hello1, ip4.hello3, and ip4.hello4 to 127.0.0.1 and 127.0.0.2.",
-				`Updating WAF list(s) 12341234/list1; updated AAAAAAAA/list3 and zzz/list4.`,
-			},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(detectionResult(ipnet.IP4, ip4Targets)),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %d %s addresses: %s", 2, "IPv4", "127.0.0.1, 127.0.0.2"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), ip4Targets, params).Return(setter.ResponseUpdated),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2"), ip4Targets, params).Return(setter.ResponseNoop),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3"), ip4Targets, params).Return(setter.ResponseUpdated),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4"), ip4Targets, params).Return(setter.ResponseUpdated),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list1, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.ResponseUpdating),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list2, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list3, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.ResponseUpdated),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list4, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.ResponseUpdated),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), ip4Targets, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2"), ip4Targets, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3"), ip4Targets, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4"), ip4Targets, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list1, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdating}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list2, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list3, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list4, wafListDescription, wafTargets(ip4Targets, nil), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
 				)
 			},
 		},
@@ -354,17 +350,11 @@ func TestUpdateIPsMultiple(t *testing.T) {
 
 			resp := updater.UpdateIPs(ctx, mockPP, conf, mockSetter)
 			require.Equal(t, !tc.ok, resp.Failed())
-			wantKind := notifier.KindUpdateFailure
-			if tc.ok {
-				wantKind = notifier.KindUpdate
-			}
-			require.Equal(t, updater.Message{
+			requirePublicMessageEqual(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage:  notifier.Message(tc.notifierMessages),
-				NotificationKind: wantKind,
 			}, resp)
 		})
 	}
@@ -391,10 +381,9 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 	lists := []api.WAFList{list1, list2, list3, list4}
 
 	for name, tc := range map[string]struct {
-		ok               bool
-		monitorMessages  []string
-		notifierMessages []string
-		prepareMocks     func(*mocks.MockPP, *mocks.MockSetter)
+		ok              bool
+		monitorMessages []string
+		prepareMocks    func(*mocks.MockPP, *mocks.MockSetter)
 	}{
 		"1yes1doing1no": {
 			false,
@@ -402,20 +391,16 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 				"Could not confirm that A records for ip4.hello2 were deleted",
 				"Could not confirm cleanup of WAF list(s) xxxxxxxx/list2",
 			},
-			[]string{
-				"Could not confirm that A records for ip4.hello2 were deleted; deleting A records for ip4.hello1; deleted A records for ip4.hello4.",
-				`Could not confirm cleanup of WAF list(s) xxxxxxxx/list2; cleaning 12341234/list1; cleaned zzz/list4.`,
-			},
 			func(p *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), params).Return(setter.ResponseUpdating),
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2"), params).Return(setter.ResponseFailed),
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3"), params).Return(setter.ResponseNoop),
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4"), params).Return(setter.ResponseUpdated),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list1, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseUpdating),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list2, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseFailed),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list3, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseNoop),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list4, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2"), params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseFailed, Before: nil, Effects: nil}),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3"), params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4"), params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list1, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdating}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list2, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseFailed}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list3, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list4, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
 				)
 			},
 		},
@@ -425,20 +410,16 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 				"Deleted A records for ip4.hello1, ip4.hello3, ip4.hello4",
 				"Cleaned WAF list(s) 12341234/list1, AAAAAAAA/list3, zzz/list4",
 			},
-			[]string{
-				"Deleted A records for ip4.hello1, ip4.hello3, and ip4.hello4.",
-				`Cleaned WAF list(s) 12341234/list1, AAAAAAAA/list3, and zzz/list4.`,
-			},
 			func(p *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), params).Return(setter.ResponseUpdated),
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2"), params).Return(setter.ResponseNoop),
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3"), params).Return(setter.ResponseUpdated),
-					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4"), params).Return(setter.ResponseUpdated),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list1, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseUpdated),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list2, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseNoop),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list3, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseUpdated),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list4, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello1"), params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello2"), params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello3"), params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().FinalDelete(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello4"), params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list1, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list2, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list3, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), p, list4, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
 				)
 			},
 		},
@@ -463,17 +444,11 @@ func TestFinalDeleteIPsMultiple(t *testing.T) {
 			}
 			resp := updater.FinalDeleteIPs(ctx, mockPP, conf, mockSetter, api.CleanupAllowAsync)
 			require.Equal(t, !tc.ok, resp.Failed())
-			wantKind := notifier.KindCleanupFailure
-			if tc.ok {
-				wantKind = notifier.KindCleanup
-			}
-			require.Equal(t, updater.Message{
+			requirePublicMessageEqual(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage:  notifier.Message(tc.notifierMessages),
-				NotificationKind: wantKind,
 			}, resp)
 		})
 	}
@@ -502,176 +477,166 @@ func TestUpdateIPs(t *testing.T) {
 	for name, tc := range map[string]struct {
 		ok               bool
 		monitorMessages  []string
-		notifierMessages []string
 		providerEnablers providerEnablers
 		prepareMocks     func(*mocks.MockPP, mockProviders, *mocks.MockSetter)
 	}{
 		"ip4-only": {
-			true, nil, nil,
+			true, nil,
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(detectionResult(ipnet.IP4, []netip.Addr{ip4})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "127.0.0.1"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, nil), wafItemComment).Return(setter.ResponseNoop),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, nil), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
 				)
 			},
 		},
 		"ip4-only/clear": {
 			true,
 			[]string{"Cleared A records for ip4.hello", "Updated WAF list(s) 12341234/list"},
-			[]string{"Cleared A records for ip4.hello.", `Updated WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(detectionResult(ipnet.IP4, []netip.Addr{})),
 					p.EXPECT().Infof(pp.EmojiClear, "Clearing %s addresses . . .", "IPv4"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{}, params).Return(setter.ResponseUpdated),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{}, nil), wafItemComment).Return(setter.ResponseUpdated),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{}, nil), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
 				)
 			},
 		},
 		"ip4-only/set-fail": {
 			false,
 			[]string{"Could not confirm that A records for ip4.hello were updated to 127.0.0.1", "Could not confirm update of WAF list(s) 12341234/list"},
-			[]string{"Could not confirm that A records for ip4.hello were updated to 127.0.0.1.", `Could not confirm update of WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(detectionResult(ipnet.IP4, []netip.Addr{ip4})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "127.0.0.1"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.ResponseFailed),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, nil), wafItemComment).Return(setter.ResponseFailed),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseFailed, Before: nil, Effects: nil}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, nil), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseFailed}),
 				)
 			},
 		},
-		"ip4-only/setting": {
+		"ip4-only/dns-updated-waf-updating": {
 			true,
-			[]string{"Setting A records for ip4.hello to 127.0.0.1", "Updating WAF list(s) 12341234/list"},
-			[]string{"Updating A records for ip4.hello to 127.0.0.1.", `Updating WAF list(s) 12341234/list.`},
+			[]string{"Set A records for ip4.hello to 127.0.0.1", "Updating WAF list(s) 12341234/list"},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(detectionResult(ipnet.IP4, []netip.Addr{ip4})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "127.0.0.1"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.ResponseUpdating),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, nil), wafItemComment).Return(setter.ResponseUpdating),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, nil), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdating}),
 				)
 			},
 		},
 		"ip6-only": {
 			true,
 			[]string{"Set AAAA records for ip6.hello to ::1", "Updated WAF list(s) 12341234/list"},
-			[]string{"Updated AAAA records for ip6.hello to ::1.", `Updated WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(detectionResult(ipnet.IP6, []netip.Addr{ip6})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "::1/64"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.ResponseUpdated),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets(nil, []netip.Addr{ip6}), wafItemComment).Return(setter.ResponseUpdated),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets(nil, []netip.Addr{ip6}), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
 				)
 			},
 		},
 		"ip6-only/set-fail": {
 			false,
 			[]string{"Could not confirm that AAAA records for ip6.hello were updated to ::1", "Could not confirm update of WAF list(s) 12341234/list"},
-			[]string{"Could not confirm that AAAA records for ip6.hello were updated to ::1.", `Could not confirm update of WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(detectionResult(ipnet.IP6, []netip.Addr{ip6})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "::1/64"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.ResponseFailed),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets(nil, []netip.Addr{ip6}), wafItemComment).Return(setter.ResponseFailed),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseFailed, Before: nil, Effects: nil}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets(nil, []netip.Addr{ip6}), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseFailed}),
 				)
 			},
 		},
 		"dual": {
-			true, nil, nil,
+			true, nil,
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(detectionResult(ipnet.IP4, []netip.Addr{ip4})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "127.0.0.1"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.ResponseNoop),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(detectionResult(ipnet.IP6, []netip.Addr{ip6})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "::1/64"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, []netip.Addr{ip6}), wafItemComment).Return(setter.ResponseNoop),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, []netip.Addr{ip6}), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
 				)
 			},
 		},
 		"dual/set-fail/1": {
 			false,
 			[]string{"Could not confirm that A records for ip4.hello were updated to 127.0.0.1"},
-			[]string{"Could not confirm that A records for ip4.hello were updated to 127.0.0.1."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(detectionResult(ipnet.IP4, []netip.Addr{ip4})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "127.0.0.1"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.ResponseFailed),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseFailed, Before: nil, Effects: nil}),
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(detectionResult(ipnet.IP6, []netip.Addr{ip6})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "::1/64"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, []netip.Addr{ip6}), wafItemComment).Return(setter.ResponseNoop),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, []netip.Addr{ip6}), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
 				)
 			},
 		},
 		"dual/set-fail/2": {
 			false,
 			[]string{"Could not confirm that AAAA records for ip6.hello were updated to ::1"},
-			[]string{"Could not confirm that AAAA records for ip6.hello were updated to ::1."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(detectionResult(ipnet.IP4, []netip.Addr{ip4})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "127.0.0.1"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.ResponseNoop),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(detectionResult(ipnet.IP6, []netip.Addr{ip6})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "::1/64"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.ResponseFailed),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, []netip.Addr{ip6}), wafItemComment).Return(setter.ResponseNoop),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseFailed, Before: nil, Effects: nil}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, []netip.Addr{ip6}), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
 				)
 			},
 		},
 		"dual/set-fail/3": {
 			false,
 			[]string{`Could not confirm update of WAF list(s) 12341234/list`},
-			[]string{`Could not confirm update of WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(detectionResult(ipnet.IP4, []netip.Addr{ip4})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "127.0.0.1"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.ResponseNoop),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(detectionResult(ipnet.IP6, []netip.Addr{ip6})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "::1/64"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.ResponseNoop),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, []netip.Addr{ip6}), wafItemComment).Return(setter.ResponseFailed),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, []netip.Addr{ip6}), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseFailed}),
 				)
 			},
 		},
 		"ip4-detect-fail": {
 			false,
 			[]string{"Failed to detect any IPv4 addresses"},
-			[]string{"Failed to detect any IPv4 addresses."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -681,7 +646,7 @@ func TestUpdateIPs(t *testing.T) {
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(detectionResult(ipnet.IP6, []netip.Addr{ip6})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "::1/64"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.ResponseNoop),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain.FQDN("ip6.hello"), []netip.Addr{ip6}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
 					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, withUnavailableTargets(wafTargets(nil, []netip.Addr{ip6}), ipnet.IP4), wafItemComment),
 				)
 			},
@@ -689,14 +654,13 @@ func TestUpdateIPs(t *testing.T) {
 		"ip6-detect-fail": {
 			false,
 			[]string{"Failed to detect any IPv6 addresses"},
-			[]string{"Failed to detect any IPv6 addresses."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(detectionResult(ipnet.IP4, []netip.Addr{ip4})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "127.0.0.1"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.ResponseNoop),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(provider.NewUnavailableDetectionResult()),
 					p.EXPECT().Noticef(pp.EmojiError, "No valid %s addresses were detected", "IPv6"),
 					hintIP6DetectionFails(p),
@@ -707,7 +671,6 @@ func TestUpdateIPs(t *testing.T) {
 		"dual/detect-fail": {
 			false,
 			[]string{"Failed to detect any IPv4 addresses", "Failed to detect any IPv6 addresses"},
-			[]string{"Failed to detect any IPv4 addresses.", "Failed to detect any IPv6 addresses."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(p *mocks.MockPP, pv mockProviders, _ *mocks.MockSetter) {
 				gomock.InOrder(
@@ -726,17 +689,11 @@ func TestUpdateIPs(t *testing.T) {
 
 			resp := runUpdateIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
 			require.Equal(t, !tc.ok, resp.Failed())
-			wantKind := notifier.KindUpdateFailure
-			if tc.ok {
-				wantKind = notifier.KindUpdate
-			}
-			require.Equal(t, updater.Message{
+			requirePublicMessageEqual(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage:  notifier.Message(tc.notifierMessages),
-				NotificationKind: wantKind,
 			}, resp)
 		})
 	}
@@ -763,14 +720,12 @@ func TestUpdateIPsDetectionFilterPartial(t *testing.T) {
 				p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address after filtering: %s", "IPv4", "198.51.100.8"),
 				p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
 				s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain4, []netip.Addr{ip4a}, params).
-					Return(setter.ResponseUpdated),
+					Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
-		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
-		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -797,14 +752,12 @@ func TestUpdateIPsDetectionFilterReportsMultipleDropped(t *testing.T) {
 				p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address after filtering: %s", "IPv4", "198.51.100.8"),
 				p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
 				s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain4, []netip.Addr{ip4kept}, params).
-					Return(setter.ResponseUpdated),
+					Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
-		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
-		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -826,14 +779,12 @@ func TestUpdateIPsDetectionFilterKeepingAllReportsFilteredDetection(t *testing.T
 				p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address after filtering: %s", "IPv4", "198.51.100.8"),
 				p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
 				s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain4, []netip.Addr{ip4}, params).
-					Return(setter.ResponseUpdated),
+					Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8"}},
-		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8."},
-		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -857,14 +808,12 @@ func TestUpdateIPsDetectionFilterKeepingAllReportsFilteredPluralDetection(t *tes
 					2, "IPv4", "198.51.100.8, 198.51.100.9"),
 				p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
 				s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain4, []netip.Addr{ip4a, ip4b}, params).
-					Return(setter.ResponseUpdated),
+					Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Set A records for ip4.hello to 198.51.100.8, 198.51.100.9"}},
-		NotifierMessage:  notifier.Message{"Updated A records for ip4.hello to 198.51.100.8 and 198.51.100.9."},
-		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -898,24 +847,18 @@ func TestUpdateIPsDetectionFilterToNoneAbortsFamily(t *testing.T) {
 				p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "2001:db8::8/64"),
 				p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
 				s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, domain6, []netip.Addr{ip6}, params).
-					Return(setter.ResponseUpdated),
+					Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
 				s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
 					withUnavailableTargets(wafTargets(nil, []netip.Addr{ip6}), ipnet.IP4), wafItemComment).
-					Return(setter.ResponseUpdated),
+					Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{
 			OK:    false,
 			Lines: []string{"No detected IPv4 addresses remain after filtering"},
 		},
-		NotifierMessage: notifier.Message{
-			"No detected IPv4 addresses remain after filtering.",
-			"Updated AAAA records for ip6.hello to 2001:db8::8.",
-			"Updated WAF list(s) 12341234/list.",
-		},
-		NotificationKind: notifier.KindUpdateFailure,
 	}, resp)
 }
 
@@ -936,14 +879,12 @@ func TestUpdateIPsDetectionFilterDoesNotChangeExplicitClear(t *testing.T) {
 				p.EXPECT().Infof(pp.EmojiClear, "Clearing %s addresses . . .", "IPv4"),
 				p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
 				s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain4, []netip.Addr{}, params).
-					Return(setter.ResponseUpdated),
+					Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: true, Lines: []string{"Cleared A records for ip4.hello"}},
-		NotifierMessage:  notifier.Message{"Cleared A records for ip4.hello."},
-		NotificationKind: notifier.KindUpdate,
 	}, resp)
 }
 
@@ -965,10 +906,8 @@ func TestUpdateIPsDetectionFilterDoesNotChangeProviderUnavailable(t *testing.T) 
 			)
 		})
 
-	require.Equal(t, updater.Message{
+	requirePublicMessageEqual(t, updater.Message{
 		HeartbeatMessage: heartbeat.Message{OK: false, Lines: []string{"Failed to detect any IPv4 addresses"}},
-		NotifierMessage:  notifier.Message{"Failed to detect any IPv4 addresses."},
-		NotificationKind: notifier.KindUpdateFailure,
 	}, resp)
 }
 
@@ -1003,17 +942,15 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(rawDetectionResult(raw)),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "2001:db8::abcd/64"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, alpha, []netip.Addr{raw.Addr()}, params).Return(setter.ResponseNoop),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, alpha, []netip.Addr{raw.Addr()}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
 					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
 						familyTargets{ipnet.IP6: setter.NewAvailableWAFTargets([]netip.Prefix{raw.Masked()})},
-						wafItemComment).Return(setter.ResponseNoop),
+						wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
 				)
 			})
 
-		require.Equal(t, updater.Message{
+		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{OK: true, Lines: nil},
-			NotifierMessage:  nil,
-			NotificationKind: notifier.KindUpdate,
 		}, resp)
 	})
 
@@ -1036,18 +973,16 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "2001:db8::abcd/64"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
 					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, alpha,
-						[]netip.Addr{netip.MustParseAddr("2001:db8::abcd")}, params).Return(setter.ResponseNoop),
+						[]netip.Addr{netip.MustParseAddr("2001:db8::abcd")}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
 					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, beta,
-						[]netip.Addr{netip.MustParseAddr("2001:db8::1")}, params).Return(setter.ResponseNoop),
+						[]netip.Addr{netip.MustParseAddr("2001:db8::1")}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
 					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, gamma,
-						[]netip.Addr{netip.MustParseAddr("2001:db8::abcd")}, params).Return(setter.ResponseNoop),
+						[]netip.Addr{netip.MustParseAddr("2001:db8::abcd")}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
 				)
 			})
 
-		require.Equal(t, updater.Message{
+		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{OK: true, Lines: nil},
-			NotifierMessage:  nil,
-			NotificationKind: notifier.KindUpdate,
 		}, resp)
 	})
 
@@ -1066,15 +1001,15 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(rawDetectionResult()),
 					p.EXPECT().Infof(pp.EmojiClear, "Clearing %s addresses . . .", "IPv6"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, alpha, []netip.Addr{}, params).Return(setter.ResponseUpdated),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, beta, []netip.Addr{}, params).Return(setter.ResponseUpdated),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, alpha, []netip.Addr{}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP6, beta, []netip.Addr{}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
 					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
 						familyTargets{ipnet.IP6: setter.NewAvailableWAFTargets([]netip.Prefix{})},
-						wafItemComment).Return(setter.ResponseUpdated),
+						wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
 				)
 			})
 
-		require.Equal(t, updater.Message{
+		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{
 				OK: true,
 				Lines: []string{
@@ -1082,11 +1017,6 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 					"Updated WAF list(s) 12341234/list",
 				},
 			},
-			NotifierMessage: notifier.Message{
-				"Cleared AAAA records for alpha.example and beta.example.",
-				"Updated WAF list(s) 12341234/list.",
-			},
-			NotificationKind: notifier.KindUpdate,
 		}, resp)
 	})
 
@@ -1125,15 +1055,11 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 				)
 			})
 
-		require.Equal(t, updater.Message{
+		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{
 				OK:    false,
 				Lines: []string{"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"},
 			},
-			NotifierMessage: notifier.Message{
-				"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes.",
-			},
-			NotificationKind: notifier.KindUpdateFailure,
 		}, resp)
 	})
 
@@ -1168,15 +1094,11 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 				)
 			})
 
-		require.Equal(t, updater.Message{
+		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{
 				OK:    false,
 				Lines: []string{"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"},
 			},
-			NotifierMessage: notifier.Message{
-				"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes.",
-			},
-			NotificationKind: notifier.KindUpdateFailure,
 		}, resp)
 	})
 
@@ -1199,7 +1121,7 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "127.0.0.1"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
 					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain4, []netip.Addr{ip4}, params).
-						Return(setter.ResponseNoop),
+						Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
 					pv[ipnet.IP6].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP6, 64).Return(rawDetectionResult(raw6)),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv6", "2001:db8::1/65"),
 					p.EXPECT().Suppress(pp.MessageIP6DetectionFails),
@@ -1211,19 +1133,15 @@ func TestUpdateIPsHostID6Preflight(t *testing.T) {
 						"Existing IPv6 WAF list items were preserved for this update"),
 					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription,
 						withUnavailableTargets(wafTargets([]netip.Addr{ip4}, nil), ipnet.IP6),
-						wafItemComment).Return(setter.ResponseNoop),
+						wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
 				)
 			})
 
-		require.Equal(t, updater.Message{
+		requirePublicMessageEqual(t, updater.Message{
 			HeartbeatMessage: heartbeat.Message{
 				OK:    false,
 				Lines: []string{"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"},
 			},
-			NotifierMessage: notifier.Message{
-				"No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes.",
-			},
-			NotificationKind: notifier.KindUpdateFailure,
 		}, resp)
 	})
 }
@@ -1250,14 +1168,12 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 	for name, tc := range map[string]struct {
 		ok               bool
 		monitorMessages  []string
-		notifierMessages []string
 		providerEnablers providerEnablers
 		prepareMocks     func(*mocks.MockPP, mockProviders, *mocks.MockSetter)
 	}{
 		"detect-timeout": {
 			false,
 			[]string{"Failed to detect any IPv4 addresses"},
-			[]string{"Failed to detect any IPv4 addresses."},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, _ *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1276,7 +1192,6 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 		"set-timeout": {
 			false,
 			[]string{"Could not confirm that A records for ip4.hello were updated to 127.0.0.1"},
-			[]string{"Could not confirm that A records for ip4.hello were updated to 127.0.0.1."},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
@@ -1284,30 +1199,29 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "127.0.0.1"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
 					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).DoAndReturn(
-						func(context.Context, pp.PP, ipnet.Family, domain.Domain, []netip.Addr, api.RecordParams) setter.ResponseCode {
+						func(context.Context, pp.PP, ipnet.Family, domain.Domain, []netip.Addr, api.RecordParams) setter.DNSResult {
 							time.Sleep(2 * time.Second)
-							return setter.ResponseFailed
+							return setter.DNSResult{Progress: nil, Code: setter.ResponseFailed, Before: nil, Effects: nil}
 						}),
 					p.EXPECT().NoticeOncef(pp.MessageUpdateTimeouts, pp.EmojiHint, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second),
-					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, nil), wafItemComment).Return(setter.ResponseNoop),
+					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, nil), wafItemComment).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
 				)
 			},
 		},
 		"set-list-timeout": {
 			false,
 			[]string{"Could not confirm update of WAF list(s) 12341234/list"},
-			[]string{`Could not confirm update of WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(p *mocks.MockPP, pv mockProviders, s *mocks.MockSetter) {
 				gomock.InOrder(
 					pv[ipnet.IP4].EXPECT().GetRawData(gomock.Any(), p, ipnet.IP4, 32).Return(detectionResult(ipnet.IP4, []netip.Addr{ip4})),
 					p.EXPECT().Infof(pp.EmojiInternet, "Detected %s address: %s", "IPv4", "127.0.0.1"),
 					p.EXPECT().Suppress(pp.MessageIP4DetectionFails),
-					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.ResponseNoop),
+					s.EXPECT().SetIPs(gomock.Any(), p, ipnet.IP4, domain.FQDN("ip4.hello"), []netip.Addr{ip4}, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
 					s.EXPECT().SetWAFList(gomock.Any(), p, list, wafListDescription, wafTargets([]netip.Addr{ip4}, nil), wafItemComment).DoAndReturn(
-						func(context.Context, pp.PP, api.WAFList, string, familyTargets, string) setter.ResponseCode {
+						func(context.Context, pp.PP, api.WAFList, string, familyTargets, string) setter.WAFResult {
 							time.Sleep(2 * time.Second)
-							return setter.ResponseFailed
+							return setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseFailed}
 						}),
 					p.EXPECT().NoticeOncef(pp.MessageUpdateTimeouts, pp.EmojiHint, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second),
 				)
@@ -1320,17 +1234,11 @@ func TestUpdateIPsTimeouts(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				resp := runUpdateIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
 				require.Equal(t, !tc.ok, resp.Failed())
-				wantKind := notifier.KindUpdateFailure
-				if tc.ok {
-					wantKind = notifier.KindUpdate
-				}
-				require.Equal(t, updater.Message{
+				requirePublicMessageEqual(t, updater.Message{
 					HeartbeatMessage: heartbeat.Message{
 						OK:    tc.ok,
 						Lines: tc.monitorMessages,
 					},
-					NotifierMessage:  notifier.Message(tc.notifierMessages),
-					NotificationKind: wantKind,
 				}, resp)
 			})
 		})
@@ -1357,134 +1265,109 @@ func TestFinalDeleteIPs(t *testing.T) {
 	for name, tc := range map[string]struct {
 		ok               bool
 		monitorMessages  []string
-		notifierMessages []string
 		providerEnablers providerEnablers
 		prepareMocks     func(*mocks.MockPP, *mocks.MockSetter)
 	}{
 		"ip4-only": {
 			true,
 			[]string{"Deleted A records for ip4.hello", "Cleaned WAF list(s) 12341234/list"},
-			[]string{"Deleted A records for ip4.hello.", `Cleaned WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseUpdated),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
 				)
 			},
 		},
 		"ip4-only/fail": {
 			false,
 			[]string{"Could not confirm that A records for ip4.hello were deleted", "Could not confirm cleanup of WAF list(s) 12341234/list"},
-			[]string{
-				"Could not confirm that A records for ip4.hello were deleted.",
-				`Could not confirm cleanup of WAF list(s) 12341234/list.`,
-			},
 			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseFailed),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseFailed),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseFailed, Before: nil, Effects: nil}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseFailed}),
 				)
 			},
 		},
-		"ip4-only/deleting": {
+		"ip4-only/dns-deleted-waf-cleaning": {
 			true,
-			[]string{"Deleting A records for ip4.hello", "Cleaning WAF list(s) 12341234/list"},
-			[]string{
-				"Deleting A records for ip4.hello.",
-				`Cleaning WAF list(s) 12341234/list.`,
-			},
+			[]string{"Deleted A records for ip4.hello", "Cleaning WAF list(s) 12341234/list"},
 			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseUpdating),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseUpdating),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdating}),
 				)
 			},
 		},
 		"ip6-only": {
 			true,
 			[]string{"Deleted AAAA records for ip6.hello", "Cleaned WAF list(s) 12341234/list"},
-			[]string{
-				"Deleted AAAA records for ip6.hello.",
-				`Cleaned WAF list(s) 12341234/list.`,
-			},
 			providerEnablers{ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.ResponseUpdated),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
 				)
 			},
 		},
 		"ip6-only/fail": {
 			false,
 			[]string{"Could not confirm that AAAA records for ip6.hello were deleted", "Could not confirm cleanup of WAF list(s) 12341234/list"},
-			[]string{
-				"Could not confirm that AAAA records for ip6.hello were deleted.",
-				`Could not confirm cleanup of WAF list(s) 12341234/list.`,
-			},
 			providerEnablers{ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.ResponseFailed),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseFailed),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseFailed, Before: nil, Effects: nil}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseFailed}),
 				)
 			},
 		},
 		"dual": {
 			true,
 			[]string{"Deleted A records for ip4.hello", "Deleted AAAA records for ip6.hello", "Cleaned WAF list(s) 12341234/list"},
-			[]string{
-				"Deleted A records for ip4.hello.", "Deleted AAAA records for ip6.hello.",
-				`Cleaned WAF list(s) 12341234/list.`,
-			},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseUpdated),
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.ResponseUpdated),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseUpdated),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseUpdated, Before: nil, Effects: nil}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated}),
 				)
 			},
 		},
 		"dual/fail/1": {
 			false,
 			[]string{"Could not confirm that A records for ip4.hello were deleted"},
-			[]string{"Could not confirm that A records for ip4.hello were deleted."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseFailed),
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.ResponseNoop),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseNoop),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseFailed, Before: nil, Effects: nil}),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
 				)
 			},
 		},
 		"dual/fail/2": {
 			false,
 			[]string{"Could not confirm that AAAA records for ip6.hello were deleted"},
-			[]string{"Could not confirm that AAAA records for ip6.hello were deleted."},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseNoop),
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.ResponseFailed),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseNoop),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseFailed, Before: nil, Effects: nil}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
 				)
 			},
 		},
 		"dual/fail/3": {
 			false,
 			[]string{"Could not confirm cleanup of WAF list(s) 12341234/list"},
-			[]string{`Could not confirm cleanup of WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true, ipnet.IP6: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.ResponseNoop),
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.ResponseNoop),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseFailed),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP6, domain6, params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseFailed}),
 				)
 			},
 		},
@@ -1494,17 +1377,11 @@ func TestFinalDeleteIPs(t *testing.T) {
 
 			resp := runFinalDeleteIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
 			require.Equal(t, !tc.ok, resp.Failed())
-			wantKind := notifier.KindCleanupFailure
-			if tc.ok {
-				wantKind = notifier.KindCleanup
-			}
-			require.Equal(t, updater.Message{
+			requirePublicMessageEqual(t, updater.Message{
 				HeartbeatMessage: heartbeat.Message{
 					OK:    tc.ok,
 					Lines: tc.monitorMessages,
 				},
-				NotifierMessage:  notifier.Message(tc.notifierMessages),
-				NotificationKind: wantKind,
 			}, resp)
 		})
 	}
@@ -1530,39 +1407,36 @@ func TestFinalDeleteIPsTimeouts(t *testing.T) {
 	for name, tc := range map[string]struct {
 		ok               bool
 		monitorMessages  []string
-		notifierMessages []string
 		providerEnablers providerEnablers
 		prepareMocks     func(*mocks.MockPP, *mocks.MockSetter)
 	}{
 		"delete-timeout": {
 			false,
 			[]string{"Could not confirm that A records for ip4.hello were deleted"},
-			[]string{"Could not confirm that A records for ip4.hello were deleted."},
 			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
 					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain.FQDN("ip4.hello"), params).DoAndReturn(
-						func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.RecordParams) setter.ResponseCode {
+						func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.RecordParams) setter.DNSResult {
 							time.Sleep(2 * time.Second)
-							return setter.ResponseFailed
+							return setter.DNSResult{Progress: nil, Code: setter.ResponseFailed, Before: nil, Effects: nil}
 						}),
 					ppfmt.EXPECT().NoticeOncef(pp.MessageUpdateTimeouts, pp.EmojiHint, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second),
-					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.ResponseNoop),
+					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseNoop}),
 				)
 			},
 		},
 		"delete-list-timeout": {
 			false,
 			[]string{"Could not confirm cleanup of WAF list(s) 12341234/list"},
-			[]string{`Could not confirm cleanup of WAF list(s) 12341234/list.`},
 			providerEnablers{ipnet.IP4: true},
 			func(ppfmt *mocks.MockPP, s *mocks.MockSetter) {
 				gomock.InOrder(
-					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain.FQDN("ip4.hello"), params).Return(setter.ResponseNoop),
+					s.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain.FQDN("ip4.hello"), params).Return(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}),
 					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, wafListDescription, gomock.Any(), api.CleanupAllowAsync).DoAndReturn(
-						func(context.Context, pp.PP, api.WAFList, string, cleanupFamilies, api.CleanupMode) setter.ResponseCode {
+						func(context.Context, pp.PP, api.WAFList, string, cleanupFamilies, api.CleanupMode) setter.WAFResult {
 							time.Sleep(2 * time.Second)
-							return setter.ResponseFailed
+							return setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseFailed}
 						}),
 					ppfmt.EXPECT().NoticeOncef(pp.MessageUpdateTimeouts, pp.EmojiHint, "If your network is experiencing high latency, consider increasing UPDATE_TIMEOUT=%v", time.Second),
 				)
@@ -1575,17 +1449,11 @@ func TestFinalDeleteIPsTimeouts(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				resp := runFinalDeleteIPsScenario(t, domains, lists, tc.providerEnablers, tc.prepareMocks)
 				require.Equal(t, !tc.ok, resp.Failed())
-				wantKind := notifier.KindCleanupFailure
-				if tc.ok {
-					wantKind = notifier.KindCleanup
-				}
-				require.Equal(t, updater.Message{
+				requirePublicMessageEqual(t, updater.Message{
 					HeartbeatMessage: heartbeat.Message{
 						OK:    tc.ok,
 						Lines: tc.monitorMessages,
 					},
-					NotifierMessage:  notifier.Message(tc.notifierMessages),
-					NotificationKind: wantKind,
 				}, resp)
 			})
 		})

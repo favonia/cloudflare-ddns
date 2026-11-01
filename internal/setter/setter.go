@@ -61,6 +61,11 @@ func New(_ppfmt pp.PP, handle api.Handle) Setter {
 type record struct {
 	api.ID
 	api.RecordParams
+
+	// originalIP accompanies each outdated record through metadata sorting and
+	// recycling. IDs may be empty or conflicting, so they cannot recover this
+	// association from a map. Matching records need only identity and metadata.
+	originalIP netip.Addr
 }
 
 // partitionRecords partitions records into desired-target buckets and outdated ones.
@@ -85,7 +90,7 @@ func partitionRecords(
 				continue
 			}
 		}
-		outdated = append(outdated, record{ID: r.ID, RecordParams: r.RecordParams})
+		outdated = append(outdated, record{ID: r.ID, RecordParams: r.RecordParams, originalIP: r.IP})
 	}
 
 	unmatched = make([]netip.Addr, 0, len(targets))
@@ -233,17 +238,26 @@ func reconcileAndSortRecords(
 func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	ipFamily ipnet.Family, domain domain.Domain, ips []netip.Addr,
 	fallbackParams api.RecordParams,
-) ResponseCode {
+) (result DNSResult) {
 	recordType := ipFamily.RecordType()
 	domainDescription := domain.Describe()
 	targets := ips
 
 	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipFamily, domain, fallbackParams)
 	if !ok {
-		return ResponseFailed
+		result.Code = ResponseFailed
+		return result
 	}
 
+	result.Before = snapshotRecords(rs, cached)
+	result.Progress = &DNSProgress{Satisfied: nil, Operations: nil}
+
 	matchedByIP, unmatchedTargets, outdatedRecords := partitionRecords(targets, rs)
+	for _, target := range targets {
+		if len(matchedByIP[target]) > 0 {
+			result.Progress.Satisfied = append(result.Progress.Satisfied, target)
+		}
+	}
 
 	// If records already satisfy all desired targets and no outdated managed records
 	// remain, we are done. Matching duplicates are tolerated residue.
@@ -257,7 +271,8 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 				"The %s records for %s are already up to date",
 				recordType, domainDescription)
 		}
-		return ResponseNoop
+		result.Code = ResponseNoop
+		return result
 	}
 
 	// Satisfy each uncovered target deterministically:
@@ -265,7 +280,6 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 	// 2. otherwise create a new record.
 	warnings := newAmbiguityWarnings()
 	unit := fmt.Sprintf("%s records for %s", recordType, domainDescription)
-	targetsToCreate := unmatchedTargets
 
 	// Stage 1: outdated-first operations for unmatched targets.
 	// Metadata for these new targets is inherited from recyclable outdated records
@@ -275,98 +289,106 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 		fallbackParams, outdatedRecords, ppfmt, warnings, unit,
 	)
 
-	mutated := false
-	for _, target := range targetsToCreate {
+	// Build the ordered work once, then execute that same list. Each outdated
+	// record already owns its original address before API-borrowed records mutate.
+	for _, target := range unmatchedTargets {
+		operation := DNSOperation{
+			Kind: api.RecordCreate, Record: api.RecordFact{ID: "", IP: target},
+			Status: DNSOperationNotAttempted, Membership: api.MembershipUnknown,
+		}
 		if len(outdatedRecords) > 0 {
-			// Recycle is an optimization of delete+create after metadata reconciliation:
-			// apply the target IP plus metadata resolved for the unmatched targets.
-			recycled := outdatedRecords[0]
+			operation.Kind = api.RecordUpdate
+			operation.Record.ID = outdatedRecords[0].ID
 			outdatedRecords = outdatedRecords[1:]
-			mutated = true
-			if ok := s.Handle.UpdateRecord(ctx, ppfmt, ipFamily, domain, recycled.ID, target,
-				resolvedParamsForNewTargets,
-			); !ok {
-				ppfmt.Noticef(pp.EmojiError,
-					"Could not confirm update of %s records for %s; the records might be inconsistent",
-					recordType, domainDescription)
-				return ResponseFailed
-			}
-			ppfmt.Noticef(pp.EmojiUpdate,
-				"Updated an outdated %s record for %s (ID: %s)",
-				recordType, domainDescription, recycled.ID)
-			continue
 		}
-
-		mutated = true
-		id, ok := s.Handle.CreateRecord(ctx, ppfmt, ipFamily, domain, target, resolvedParamsForNewTargets)
-		if !ok {
-			ppfmt.Noticef(pp.EmojiError,
-				"Could not confirm update of %s records for %s; the records might be inconsistent",
-				recordType, domainDescription)
-			return ResponseFailed
-		}
-		ppfmt.Noticef(pp.EmojiCreation,
-			"Added a new %s record for %s (ID: %s)", recordType, domainDescription, id)
+		result.Progress.Operations = append(result.Progress.Operations, operation)
 	}
-
-	// Stage 2: delete outdated/out-of-target leftovers.
 	for _, r := range outdatedRecords {
-		mutated = true
-		if ok := s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, r.ID, api.RegularDeletionMode); !ok {
-			ppfmt.Noticef(pp.EmojiError,
-				"Could not confirm update of %s records for %s; the records might be inconsistent",
-				recordType, domainDescription)
-			return ResponseFailed
+		result.Progress.Operations = append(result.Progress.Operations, DNSOperation{
+			Kind: api.RecordDelete, Record: api.RecordFact{ID: r.ID, IP: r.originalIP},
+			Status: DNSOperationNotAttempted, Membership: api.MembershipUnknown,
+		})
+	}
+
+	for i, operation := range result.Progress.Operations {
+		var effect api.RecordMutation
+		switch operation.Kind {
+		case api.RecordUpdate:
+			effect = s.Handle.UpdateRecord(ctx, ppfmt, ipFamily, domain, operation.Record.ID,
+				operation.Record.IP, resolvedParamsForNewTargets)
+		case api.RecordCreate:
+			effect = s.Handle.CreateRecord(ctx, ppfmt, ipFamily, domain, operation.Record.IP, resolvedParamsForNewTargets)
+		case api.RecordDelete:
+			effect = s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, operation.Record.ID, api.RegularDeletionMode)
 		}
-
-		ppfmt.Noticef(pp.EmojiDeletion,
-			"Deleted an outdated %s record for %s (ID: %s)", recordType, domainDescription, r.ID)
+		if !result.admit(i, effect) {
+			result.Code = ResponseFailed
+			return result
+		}
+		switch operation.Kind {
+		case api.RecordUpdate:
+			ppfmt.Noticef(pp.EmojiUpdate,
+				"Updated an outdated %s record for %s (ID: %s)", recordType, domainDescription, operation.Record.ID)
+		case api.RecordCreate:
+			ppfmt.Noticef(pp.EmojiCreation,
+				"Added a new %s record for %s (ID: %s)", recordType, domainDescription, effect.Record.ID)
+		case api.RecordDelete:
+			ppfmt.Noticef(pp.EmojiDeletion,
+				"Deleted an outdated %s record for %s (ID: %s)", recordType, domainDescription, operation.Record.ID)
+		}
 	}
 
-	if !mutated {
-		return ResponseNoop
-	}
-
-	return ResponseUpdated
+	result.Code = ResponseUpdated
+	return result
 }
 
 // FinalDelete deletes all managed DNS records.
 func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, domain domain.Domain,
 	fallbackParams api.RecordParams,
-) ResponseCode {
+) (result DNSResult) {
 	recordType := ipFamily.RecordType()
 	domainDescription := domain.Describe()
 
 	rs, cached, ok := s.Handle.ListRecords(ctx, ppfmt, ipFamily, domain, fallbackParams)
 	if !ok {
-		return ResponseFailed
+		result.Code = ResponseFailed
+		return result
 	}
 
-	// Sorting is not needed for correctness, but it will make the function deterministic.
-	unmatchedIDs := make([]api.ID, 0, len(rs))
-	for _, r := range rs {
-		unmatchedIDs = append(unmatchedIDs, r.ID)
+	result.Before = snapshotRecords(rs, cached)
+	result.Progress = &DNSProgress{Satisfied: nil, Operations: nil}
+
+	// Freeze every deletion, including record/address association, before the first
+	// request can mutate the API's borrowed cache slice. Preserve listing order.
+	for _, fact := range result.Before.Records {
+		result.Progress.Operations = append(result.Progress.Operations, DNSOperation{
+			Kind: api.RecordDelete, Record: fact,
+			Status: DNSOperationNotAttempted, Membership: api.MembershipUnknown,
+		})
 	}
 
-	if len(unmatchedIDs) == 0 {
+	if len(result.Progress.Operations) == 0 {
 		if cached {
 			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records for %s were already deleted (cached)", recordType, domainDescription) //nolint:lll
 		} else {
 			ppfmt.Infof(pp.EmojiAlreadyDone, "The %s records for %s were already deleted", recordType, domainDescription)
 		}
-		return ResponseNoop
+		result.Code = ResponseNoop
+		return result
 	}
 
 	allOK := true
-	for _, id := range unmatchedIDs {
-		if !s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, id, api.FinalDeletionMode) {
+	for i, operation := range result.Progress.Operations {
+		id := operation.Record.ID
+		if !result.admit(i, s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, id, api.FinalDeletionMode)) {
 			allOK = false
 
 			if ctx.Err() != nil {
 				ppfmt.Infof(pp.EmojiTimeout,
-					"Deletion of %s records for %s was aborted by a timeout or signal; the records might be inconsistent",
+					"Deletion of %s records for %s was aborted by a timeout or signal",
 					recordType, domainDescription)
-				return ResponseFailed
+				result.Code = ResponseFailed
+				return result
 			}
 			continue
 		}
@@ -374,13 +396,12 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Fam
 		ppfmt.Noticef(pp.EmojiDeletion, "Deleted an outdated %s record for %s (ID: %s)", recordType, domainDescription, id)
 	}
 	if !allOK {
-		ppfmt.Noticef(pp.EmojiError,
-			"Could not confirm deletion of %s records for %s; the records might be inconsistent",
-			recordType, domainDescription)
-		return ResponseFailed
+		result.Code = ResponseFailed
+		return result
 	}
 
-	return ResponseUpdated
+	result.Code = ResponseUpdated
+	return result
 }
 
 // SetWAFList updates a WAF list.
@@ -396,20 +417,22 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Fam
 func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	list api.WAFList, listDescription string,
 	targetsByFamily map[ipnet.Family]WAFTargets, fallbackItemComment string,
-) ResponseCode {
+) WAFResult {
+	result := WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: ResponseFailed}
 	type wafFamilyPlan struct {
 		createPrefixes []netip.Prefix
 		createComment  string
 		deleteItems    []api.WAFListItem
 	}
 
-	items, _, cached, ok := s.Handle.ListWAFListItems(
+	items, exists, cached, ok := s.Handle.ListWAFListItems(
 		ctx, ppfmt, list, listDescription, fallbackItemComment,
 	)
 	if !ok {
-		return ResponseFailed
+		return result
 	}
 
+	result.Before = &api.WAFSnapshot{Exists: exists, Cached: cached, Items: slices.Clone(items)}
 	warnings := newAmbiguityWarnings()
 	// Plan each family independently, then consume plans in a fixed family order.
 	plans := make(map[ipnet.Family]wafFamilyPlan, ipnet.FamilyCount)
@@ -481,7 +504,8 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 		} else {
 			ppfmt.Infof(pp.EmojiAlreadyDone, "The list %s is already up to date", list.Describe())
 		}
-		return ResponseNoop
+		result.Code = ResponseNoop
+		return result
 	}
 
 	// Create first, then delete, to avoid temporary coverage gaps on partial failures.
@@ -500,10 +524,16 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	})
 
 	if len(itemsToCreate) > 0 {
-		if !s.Handle.CreateWAFListItems(ctx, ppfmt, list, listDescription, itemsToCreate) {
-			ppfmt.Noticef(pp.EmojiError,
-				"Could not confirm update of the list %s; its content may be inconsistent", list.Describe())
-			return ResponseFailed
+		result.Batches = append(result.Batches, WAFBatch{Delete: nil, Result: nil, Create: slices.Clone(itemsToCreate)})
+	}
+	if len(itemsToDelete) > 0 {
+		result.Batches = append(result.Batches, WAFBatch{Create: nil, Delete: slices.Clone(itemsToDelete), Result: nil})
+	}
+	if len(itemsToCreate) > 0 {
+		batch := s.Handle.CreateWAFListItems(ctx, ppfmt, list, listDescription, itemsToCreate)
+		result.Batches[0].Result = cloneWAFBatchResult(batch)
+		if !batch.OK {
+			return result
 		}
 		for _, item := range itemsToCreate {
 			ppfmt.Noticef(pp.EmojiCreation, "Added %s to the list %s",
@@ -515,17 +545,21 @@ func (s setter) SetWAFList(ctx context.Context, ppfmt pp.PP,
 	for _, item := range itemsToDelete {
 		idsToDelete = append(idsToDelete, item.ID)
 	}
-	if !s.Handle.DeleteWAFListItems(ctx, ppfmt, list, listDescription, idsToDelete) {
-		ppfmt.Noticef(pp.EmojiError, "Could not confirm update of the list %s; its content may be inconsistent",
-			list.Describe())
-		return ResponseFailed
+	if len(itemsToDelete) == 0 {
+		result.Batches = append(result.Batches, WAFBatch{Create: nil, Delete: nil, Result: nil})
+	}
+	batch := s.Handle.DeleteWAFListItems(ctx, ppfmt, list, listDescription, idsToDelete)
+	result.Batches[len(result.Batches)-1].Result = cloneWAFBatchResult(batch)
+	if !batch.OK {
+		return result
 	}
 	for _, item := range itemsToDelete {
 		ppfmt.Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
 			item.Prefix.Masked().String(), list.Describe())
 	}
 
-	return ResponseUpdated
+	result.Code = ResponseUpdated
+	return result
 }
 
 // prefixContainsPrefix reports whether container fully covers target.
@@ -538,17 +572,20 @@ func prefixContainsPrefix(container, target netip.Prefix) bool {
 // FinalClearWAFList removes managed WAF content during shutdown.
 func (s setter) FinalClearWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, listDescription string,
 	managedFamilies map[ipnet.Family]bool, mode api.CleanupMode,
-) ResponseCode {
-	switch s.Handle.FinalCleanWAFList(ctx, ppfmt, list, listDescription, managedFamilies, mode) {
+) WAFResult {
+	cleanup := cloneWAFCleanupResult(s.Handle.FinalCleanWAFList(ctx, ppfmt, list, listDescription, managedFamilies, mode))
+	result := WAFResult{Batches: nil, Code: ResponseFailed, Before: cleanup.Before, Cleanup: cleanup}
+	switch cleanup.Code {
 	case api.WAFListCleanupNoop:
-		return ResponseNoop
+		result.Code = ResponseNoop
 	case api.WAFListCleanupUpdated:
-		return ResponseUpdated
+		result.Code = ResponseUpdated
 	case api.WAFListCleanupUpdating:
-		return ResponseUpdating
+		result.Code = ResponseUpdating
 	case api.WAFListCleanupFailed:
-		return ResponseFailed
+		result.Code = ResponseFailed
 	default:
-		return ResponseFailed
+		result.Code = ResponseFailed
 	}
+	return result
 }

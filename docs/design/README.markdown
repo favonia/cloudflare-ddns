@@ -29,6 +29,7 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 
 ### Supporting feature models
 
+- [`features/notification-model.markdown`](features/notification-model.markdown): read when deciding notification triggers, per-scope first-known address coverage, fresh-observation inference, lifecycle composition, or evidence and uncertainty claims.
 - [`features/detection-filter.markdown`](features/detection-filter.markdown): read when changing `IP4_DETECTION_FILTER`, `IP6_DETECTION_FILTER`, filter syntax, filter placement, or filter-caused abort behavior.
 - [`features/provider-raw-data-contract.markdown`](features/provider-raw-data-contract.markdown): read when changing provider-side IP acceptance, rejection, output shape, or raw-data contracts.
 - [`features/network-security-model.markdown`](features/network-security-model.markdown): read when changing public-IP detection security behavior or security claims in docs.
@@ -39,6 +40,10 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 
 - [`features/managed-record-ownership.markdown`](features/managed-record-ownership.markdown): read when changing the DNS instantiation of the shared ownership and reconciliation models, including DNS attribute-based ownership, filtering, or metadata reconciliation.
 - [`features/managed-waf-item-ownership.markdown`](features/managed-waf-item-ownership.markdown): read when changing the WAF instantiation of the shared ownership and reconciliation models, including WAF attribute-based ownership, filtering, or deletion-target consequences.
+
+## Rationale
+
+For lower-frequency review of notification presentation choices, see [Notification Messages rationale](../rationale/notification-messages.markdown). It records arguments and candidate alternatives without replacing the contracts above.
 
 ## Directory Scope
 

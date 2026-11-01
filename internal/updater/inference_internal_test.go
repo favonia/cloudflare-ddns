@@ -1,0 +1,456 @@
+package updater
+
+import (
+	"net/netip"
+	"strconv"
+	"testing"
+
+	"github.com/favonia/cloudflare-ddns/internal/api"
+	"github.com/favonia/cloudflare-ddns/internal/setter"
+)
+
+func inferenceAddresses() [3]netip.Addr {
+	return [3]netip.Addr{netip.AddrFrom4([4]byte{192, 0, 2, 1}), netip.AddrFrom4([4]byte{192, 0, 2, 2}), netip.AddrFrom4([4]byte{192, 0, 2, 3})}
+}
+
+// Enumerate full assignments independently of the matching algorithm. All
+// nonempty subsets of A/B/C/absence occur, with zero through four factors.
+func TestCompatibleFactorsEnumeration(t *testing.T) {
+	t.Parallel()
+	for count := range 5 {
+		models := 1
+		for range count {
+			models *= 15
+		}
+		for model := range models {
+			factors := make([]recordFactor, count)
+			masks := make([]int, count)
+			n := model
+			for i := range factors {
+				masks[i] = n%15 + 1
+				n /= 15
+				factors[i].absent = masks[i]&8 != 0
+				for j, ip := range inferenceAddresses() {
+					if masks[i]&(1<<j) != 0 {
+						factors[i].addresses = append(factors[i].addresses, ip)
+					}
+				}
+			}
+			possible := [8]bool{}
+			var enumerate func(int, int)
+			enumerate = func(i, set int) {
+				if i == count {
+					possible[set] = true
+					return
+				}
+				for choice := range 4 {
+					if masks[i]&(1<<choice) != 0 {
+						next := set
+						if choice < 3 {
+							next |= 1 << choice
+						}
+						enumerate(i+1, next)
+					}
+				}
+			}
+			enumerate(0, 0)
+			for set, want := range possible {
+				var observed []netip.Addr
+				for i, ip := range inferenceAddresses() {
+					if set&(1<<i) != 0 {
+						observed = append(observed, ip)
+					}
+				}
+				if got := compatibleFactors(factors, observed); got != want {
+					t.Fatalf("masks=%v observed=%v got %v want %v", masks, observed, got, want)
+				}
+			}
+		}
+	}
+}
+
+// These fixtures project the evidence consumed by assess, not complete setter
+// results or claims that every sequence is a reachable reconciliation trace.
+// Missing progress and intermediate read omissions keep the unit model focused
+// on inference; effects retain the API identity/address and admission rules.
+func inferenceRead(ids string, addresses ...int) setter.DNSResult {
+	records := make([]api.RecordFact, len(addresses))
+	for i, a := range addresses {
+		records[i] = api.RecordFact{ID: api.ID(string(ids[i])), IP: inferenceAddresses()[a]}
+	}
+	return setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Effects: nil, Before: &setter.DNSSnapshot{Cached: false, Records: records}}
+}
+
+func inferenceEffect(status api.MutationStatus, kind api.RecordMutationKind, id string, address int, membership api.ManagedMembership) setter.DNSResult {
+	result := setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}
+	if status == api.MutationNoEffect {
+		return result
+	}
+	ip := inferenceAddresses()[address]
+	if kind == api.RecordDelete {
+		ip = netip.Addr{}
+	}
+	if kind == api.RecordCreate && status == api.MutationUnconfirmed {
+		id = ""
+	}
+	result.Effects = []api.RecordMutation{{Status: status, Kind: kind, Record: api.RecordFact{ID: api.ID(id), IP: ip}, Membership: membership}}
+	return result
+}
+
+func TestDNSInferenceTransitions(t *testing.T) {
+	t.Parallel()
+	uncertain := inferenceEffect(api.MutationUnconfirmed, api.RecordUpdate, "r", 1, api.MembershipManaged)
+	completed := inferenceEffect(api.MutationCompleted, api.RecordUpdate, "r", 2, api.MembershipManaged)
+	tests := []struct {
+		name   string
+		rounds []setter.DNSResult
+		want   []bool
+	}{
+		{"first read", []setter.DNSResult{inferenceRead("r", 0)}, []bool{false}},
+		{"exclusive replacement rejects empty", []setter.DNSResult{inferenceRead("r", 0), uncertain, inferenceRead("")}, []bool{false, false, true}},
+		{"exclusive replacement rejects union", []setter.DNSResult{inferenceRead("r", 0), uncertain, inferenceRead("rs", 0, 1)}, []bool{false, false, true}},
+		{"resolved alternative cannot return", []setter.DNSResult{inferenceRead("r", 0), uncertain, inferenceRead("r", 0), completed, inferenceRead("r", 1)}, []bool{false, false, false, false, true}},
+		{"discrepancy reanchors", []setter.DNSResult{inferenceRead("r", 0), inferenceRead("r", 2), inferenceRead("r", 2), inferenceRead("r", 0)}, []bool{false, true, false, true}},
+		{"successful create requires presence", []setter.DNSResult{inferenceRead(""), inferenceEffect(api.MutationCompleted, api.RecordCreate, "r", 1, api.MembershipManaged), inferenceRead("")}, []bool{false, false, true}},
+		{"optional create permits absence", []setter.DNSResult{inferenceRead(""), inferenceEffect(api.MutationUnconfirmed, api.RecordCreate, "", 1, api.MembershipManaged), inferenceRead("")}, []bool{false, false, false}},
+		{"optional create permits presence", []setter.DNSResult{inferenceRead(""), inferenceEffect(api.MutationUnconfirmed, api.RecordCreate, "", 1, api.MembershipManaged), inferenceRead("s", 1)}, []bool{false, false, false}},
+		{"duplicate addresses preserve other identity", []setter.DNSResult{inferenceRead("rs", 0, 0), inferenceEffect(api.MutationCompleted, api.RecordDelete, "r", 0, api.MembershipUnknown), inferenceRead("")}, []bool{false, false, true}},
+		{"identical duplicate identity normalizes", []setter.DNSResult{inferenceRead("rr", 0, 0), inferenceEffect(api.MutationCompleted, api.RecordDelete, "r", 0, api.MembershipUnknown), inferenceRead("")}, []bool{false, false, false}},
+		{"contradictory identities cannot anchor", []setter.DNSResult{inferenceRead("rr", 0, 1), inferenceRead("s", 2), inferenceRead("")}, []bool{false, false, true}},
+		{"ownership exit", []setter.DNSResult{inferenceRead("r", 0), inferenceEffect(api.MutationCompleted, api.RecordUpdate, "r", 1, api.MembershipUnmanaged), inferenceRead("")}, []bool{false, false, false}},
+		{"unknown ownership permits absence", []setter.DNSResult{inferenceRead("r", 0), inferenceEffect(api.MutationCompleted, api.RecordUpdate, "r", 1, api.MembershipUnknown), inferenceRead("")}, []bool{false, false, false}},
+		{"unconfirmed ownership exit retains old", []setter.DNSResult{inferenceRead("r", 0), inferenceEffect(api.MutationUnconfirmed, api.RecordUpdate, "r", 1, api.MembershipUnknown), inferenceRead("r", 0)}, []bool{false, false, false}},
+		{"unconfirmed delete retains old", []setter.DNSResult{inferenceRead("r", 0), inferenceEffect(api.MutationUnconfirmed, api.RecordDelete, "r", 0, api.MembershipUnknown), inferenceRead("r", 0)}, []bool{false, false, false}},
+		{"unknown effect association is conservative", []setter.DNSResult{inferenceRead("r", 0), inferenceEffect(api.MutationCompleted, api.RecordUpdate, "s", 1, api.MembershipManaged), inferenceRead("s", 1)}, []bool{false, false, false}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var m dnsInference
+			for i, r := range tt.rounds {
+				if got := m.assess(r); got != tt.want[i] {
+					t.Fatalf("round %d got %v want %v", i, got, tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestDNSInferenceCachedAndMissingReads(t *testing.T) {
+	t.Parallel()
+	var m dnsInference
+	m.assess(inferenceRead("r", 0))
+	m.assess(inferenceEffect(api.MutationUnconfirmed, api.RecordUpdate, "r", 1, api.MembershipManaged))
+	cached := inferenceRead("r", 0)
+	cached.Before.Cached = true
+	if m.assess(cached) || m.assess(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Before: nil, Effects: nil}) || m.assess(inferenceRead("r", 1)) {
+		t.Fatal("cached or missing input refined alternatives")
+	}
+	var empty dnsInference
+	if empty.assess(cached) || empty.assess(inferenceRead("r", 2)) {
+		t.Fatal("cache created a baseline")
+	}
+}
+
+func TestDNSInferenceCompareBeforeEffects(t *testing.T) {
+	t.Parallel()
+	var m dnsInference
+	m.assess(inferenceRead("r", 0))
+	next := inferenceRead("r", 1)
+	next.Effects = inferenceEffect(api.MutationCompleted, api.RecordUpdate, "r", 0, api.MembershipManaged).Effects
+	if !m.assess(next) || m.assess(inferenceRead("r", 0)) {
+		t.Fatal("must compare, reanchor, then apply effects")
+	}
+}
+
+func TestDNSInferenceWidenAndRecover(t *testing.T) {
+	t.Parallel()
+	var m dnsInference
+	large := setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Effects: nil, Before: &setter.DNSSnapshot{Cached: false, Records: nil}}
+	for i := range 257 {
+		large.Before.Records = append(large.Before.Records, api.RecordFact{ID: api.ID(strconv.Itoa(i)), IP: inferenceAddresses()[0]})
+	}
+	if m.assess(large) || m.assess(inferenceRead("r", 1)) || !m.assess(inferenceRead("r", 2)) {
+		t.Fatal("factor overflow must widen, then fresh read restores precision")
+	}
+	var edges dnsInference
+	edges.assess(inferenceRead("r", 0))
+	for i := range 4097 {
+		effect := inferenceEffect(api.MutationUnconfirmed, api.RecordUpdate, "r", 0, api.MembershipManaged)
+		effect.Effects[0].Record.IP = netip.AddrFrom4([4]byte{10, byte(i >> 16), byte(i >> 8), byte(i)})
+		edges.assess(effect)
+	}
+	if edges.assess(inferenceRead("r", 1)) || !edges.assess(inferenceRead("r", 2)) {
+		t.Fatal("edge overflow must widen, then recover")
+	}
+}
+
+func TestCompatibleFactorsExamples(t *testing.T) {
+	t.Parallel()
+	a, b, c := inferenceAddresses()[0], inferenceAddresses()[1], inferenceAddresses()[2]
+	tests := []struct {
+		name     string
+		factors  []recordFactor
+		observed []netip.Addr
+		want     bool
+	}{
+		{"required choice cannot disappear", []recordFactor{{id: "", absent: false, addresses: []netip.Addr{a, b}}}, nil, false},
+		{"required choice cannot split", []recordFactor{{id: "", absent: false, addresses: []netip.Addr{a, b}}}, []netip.Addr{a, b}, false},
+		{"matching bottleneck", []recordFactor{{id: "", absent: false, addresses: []netip.Addr{a, b}}, {id: "", absent: false, addresses: []netip.Addr{c}}, {id: "", absent: false, addresses: []netip.Addr{c}}}, []netip.Addr{a, b, c}, false},
+		{"augmenting path", []recordFactor{{id: "", absent: false, addresses: []netip.Addr{a, b}}, {id: "", absent: false, addresses: []netip.Addr{a}}}, []netip.Addr{a, b}, true},
+		{"duplicate observation is a set", []recordFactor{{id: "", absent: false, addresses: []netip.Addr{a}}}, []netip.Addr{a, a}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := compatibleFactors(tt.factors, tt.observed); got != tt.want {
+				t.Fatalf("got %v want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDNSInferenceIdentityAndPresence(t *testing.T) {
+	t.Parallel()
+	t.Run("symbolic create then identified update", func(t *testing.T) {
+		t.Parallel()
+		var m dnsInference
+		m.assess(inferenceRead(""))
+		m.assess(inferenceEffect(api.MutationUnconfirmed, api.RecordCreate, "", 0, api.MembershipManaged))
+		m.assess(inferenceEffect(api.MutationCompleted, api.RecordUpdate, "r", 1, api.MembershipManaged))
+		if m.assess(inferenceRead("r", 1)) || !m.assess(inferenceRead("r", 2)) {
+			t.Fatal("unknown association must widen, then recover")
+		}
+	})
+	t.Run("successful symbolic create requires presence", func(t *testing.T) {
+		t.Parallel()
+		var m dnsInference
+		m.assess(inferenceRead(""))
+		m.assess(inferenceEffect(api.MutationCompleted, api.RecordCreate, "", 0, api.MembershipManaged))
+		if !m.assess(inferenceRead("")) {
+			t.Fatal("successful create was made optional")
+		}
+	})
+	t.Run("fresh presence replaces optional factors", func(t *testing.T) {
+		t.Parallel()
+		var m dnsInference
+		m.assess(inferenceRead(""))
+		for range 2 {
+			m.assess(inferenceEffect(api.MutationUnconfirmed, api.RecordCreate, "", 0, api.MembershipManaged))
+		}
+		if m.assess(inferenceRead("r", 0)) || !m.assess(inferenceRead("")) {
+			t.Fatal("fresh presence must replace, not intersect, alternatives")
+		}
+	})
+	t.Run("malformed observation cannot classify or anchor", func(t *testing.T) {
+		t.Parallel()
+		for _, fact := range []api.RecordFact{{ID: "", IP: inferenceAddresses()[1]}, {ID: "r", IP: netip.Addr{}}} {
+			var m dnsInference
+			m.assess(inferenceRead("r", 0))
+			if m.assess(setter.DNSResult{Progress: nil, Code: setter.ResponseNoop, Effects: nil, Before: &setter.DNSSnapshot{Cached: false, Records: []api.RecordFact{fact}}}) || m.assess(inferenceRead("r", 2)) || !m.assess(inferenceRead("")) {
+				t.Fatal("invalid snapshot created false precision")
+			}
+		}
+	})
+	t.Run("cached effects still apply", func(t *testing.T) {
+		t.Parallel()
+		var m dnsInference
+		m.assess(inferenceRead("r", 0))
+		cached := inferenceRead("r", 0)
+		cached.Before.Cached = true
+		cached.Effects = inferenceEffect(api.MutationCompleted, api.RecordUpdate, "r", 1, api.MembershipManaged).Effects
+		if m.assess(cached) || !m.assess(inferenceRead("r", 0)) {
+			t.Fatal("cached read suppressed a reached effect")
+		}
+	})
+}
+
+// Enumerate concrete address sets independently of the factor representation.
+// The population is two independent record effects, with an optional third
+// identity sharing the deleted record's address. This unit projection checks
+// inference's accepted and rejected outcomes; it does not claim every combination
+// is a setter-produced plan (the setter stops at its first failed operation).
+func TestDNSInferencePartialEffectsSoundness(t *testing.T) {
+	t.Parallel()
+	statuses := []api.MutationStatus{api.MutationNoEffect, api.MutationUnconfirmed, api.MutationCompleted}
+	for _, kind := range []api.RecordMutationKind{api.RecordCreate, api.RecordUpdate} {
+		for _, changeStatus := range statuses {
+			for _, deleteStatus := range statuses {
+				for _, survivor := range []bool{false, true} {
+					possible := [8]bool{}
+					for _, changed := range []bool{false, true} {
+						if changeStatus == api.MutationNoEffect && changed || changeStatus == api.MutationCompleted && !changed {
+							continue
+						}
+						for _, deleted := range []bool{false, true} {
+							if deleteStatus == api.MutationNoEffect && deleted || deleteStatus == api.MutationCompleted && !deleted {
+								continue
+							}
+							set := 0
+							if changed {
+								set |= 1 << 1
+							} else if kind == api.RecordUpdate {
+								set |= 1 << 0
+							}
+							if !deleted || survivor {
+								set |= 1 << 2
+							}
+							possible[set] = true
+						}
+					}
+					for observed, compatible := range possible {
+						var m dnsInference
+						ids, addresses := "s", []int{2}
+						if kind == api.RecordUpdate {
+							ids, addresses = "rs", []int{0, 2}
+						}
+						if survivor {
+							ids += "t"
+							addresses = append(addresses, 2)
+						}
+						m.assess(inferenceRead(ids, addresses...))
+						m.assess(inferenceEffect(changeStatus, kind, "r", 1, api.MembershipManaged))
+						m.assess(inferenceEffect(deleteStatus, api.RecordDelete, "s", 2, api.MembershipUnknown))
+						observedIDs := make([]byte, 0, len(inferenceAddresses()))
+						addresses = nil
+						for i := range inferenceAddresses() {
+							if observed&(1<<i) != 0 {
+								observedIDs = append(observedIDs, byte('a'+i))
+								addresses = append(addresses, i)
+							}
+						}
+						if got := m.assess(inferenceRead(string(observedIDs), addresses...)); got == compatible {
+							t.Fatalf("kind=%v change=%v delete=%v survivor=%v observed=%d: unexplained=%v compatible=%v", kind, changeStatus, deleteStatus, survivor, observed, got, compatible)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestDNSInferenceMappedAddresses(t *testing.T) {
+	t.Parallel()
+	mapped := netip.MustParseAddr("::ffff:192.0.2.1")
+	t.Run("equivalent observations", func(t *testing.T) {
+		t.Parallel()
+		var m dnsInference
+		before := inferenceRead("r", 0)
+		before.Before.Records[0].IP = mapped
+		if m.assess(before) || m.assess(inferenceRead("r", 0)) || m.assess(before) {
+			t.Fatal("mapped and canonical addresses reported a discrepancy")
+		}
+	})
+	t.Run("equivalent identity facts retain precision", func(t *testing.T) {
+		t.Parallel()
+		var m dnsInference
+		before := inferenceRead("rr", 0, 0)
+		before.Before.Records[0].IP = mapped
+		if m.assess(before) || !m.assess(inferenceRead("r", 1)) {
+			t.Fatal("equivalent identity facts invalidated the baseline")
+		}
+	})
+	t.Run("different identity facts remain contradictory", func(t *testing.T) {
+		t.Parallel()
+		var m dnsInference
+		before := inferenceRead("rr", 0, 1)
+		before.Before.Records[0].IP = mapped
+		if m.assess(before) || m.assess(inferenceRead("r", 2)) {
+			t.Fatal("genuinely conflicting identity facts established precision")
+		}
+	})
+	for _, status := range []api.MutationStatus{api.MutationCompleted, api.MutationUnconfirmed} {
+		for _, kind := range []api.RecordMutationKind{api.RecordCreate, api.RecordUpdate} {
+			for _, membership := range []api.ManagedMembership{api.MembershipManaged, api.MembershipUnknown} {
+				var m dnsInference
+				before := inferenceRead("")
+				if kind == api.RecordUpdate {
+					before = inferenceRead("r", 1)
+				}
+				m.assess(before)
+				effect := inferenceEffect(status, kind, "r", 0, membership)
+				effect.Effects[0].Record.IP = mapped
+				m.assess(effect)
+				if m.assess(inferenceRead("r", 0)) {
+					t.Errorf("mapped effect excluded canonical outcome: status=%v kind=%v membership=%v", status, kind, membership)
+				}
+			}
+		}
+	}
+}
+
+// A create response is not promised to reject an ID already in the admitted
+// snapshot. Test conservative recovery through assess's observable decision,
+// rather than asserting the private factor layout or a Cloudflare occurrence.
+func TestDNSInferenceCreateIdentityCollisionRecovers(t *testing.T) {
+	t.Parallel()
+	for _, membership := range []api.ManagedMembership{api.MembershipManaged, api.MembershipUnmanaged} {
+		var m dnsInference
+		m.assess(inferenceRead("r", 0))
+		m.assess(inferenceEffect(api.MutationCompleted, api.RecordCreate, "r", 1, membership))
+		if m.assess(inferenceRead("r", 2)) {
+			t.Fatal("ambiguous create identity must not manufacture an unexplained change")
+		}
+		if !m.assess(inferenceRead("r", 0)) {
+			t.Fatal("a coherent fresh read must restore discrepancy detection")
+		}
+	}
+}
+
+// Enumerate concrete single-record states independently of the factor model.
+// Two successive requests may each complete or leave their input unchanged;
+// selective ownership can additionally exclude the resulting record. Check
+// both accepted and rejected observations, so widening everything cannot pass.
+func TestDNSInferenceSequentialUpdatesMatchConcreteOutcomes(t *testing.T) {
+	t.Parallel()
+	type transition struct {
+		status     api.MutationStatus
+		membership api.ManagedMembership
+	}
+	choices := []transition{
+		{api.MutationNoEffect, api.MembershipUnknown},
+		{api.MutationCompleted, api.MembershipManaged},
+		{api.MutationCompleted, api.MembershipUnmanaged},
+		{api.MutationUnconfirmed, api.MembershipManaged},
+		{api.MutationUnconfirmed, api.MembershipUnknown},
+	}
+	for _, first := range choices {
+		for _, second := range choices {
+			// Index zero is absence; indices 1..3 are the three fixture addresses.
+			possible := [4]bool{false, true, false, false}
+			for i, step := range []transition{first, second} {
+				if step.status == api.MutationNoEffect {
+					continue
+				}
+				next := [4]bool{}
+				if step.status == api.MutationUnconfirmed {
+					next = possible
+				}
+				if step.membership != api.MembershipUnmanaged {
+					if i == 0 {
+						next[2] = true
+					} else {
+						next[3] = true
+					}
+				}
+				if step.membership != api.MembershipManaged {
+					next[0] = true
+				}
+				possible = next
+			}
+			for observation, compatible := range possible {
+				var m dnsInference
+				m.assess(inferenceRead("r", 0))
+				m.assess(inferenceEffect(first.status, api.RecordUpdate, "r", 1, first.membership))
+				m.assess(inferenceEffect(second.status, api.RecordUpdate, "r", 2, second.membership))
+				read := inferenceRead("")
+				if observation > 0 {
+					read = inferenceRead("r", observation-1)
+				}
+				if got := m.assess(read); got == compatible {
+					t.Fatalf("steps=%v,%v observation=%d: unexplained=%v, compatible=%v", first, second, observation, got, compatible)
+				}
+			}
+		}
+	}
+}

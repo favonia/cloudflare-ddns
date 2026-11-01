@@ -169,7 +169,6 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 				gomock.InOrder(
 					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of the list %s; falling back to item deletion: %v", "account456/list", gomock.Any()),
 					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm that item deletion started in the list %s: %v", "account456/list", gomock.Any()),
-					ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm deletion of managed items in the list %s; list content may be inconsistent", "account456/list"),
 				)
 			},
 		},
@@ -198,7 +197,26 @@ func TestFinalCleanWAFListWholeListOwnership(t *testing.T) {
 					cleanupFamilies(ipnet.IP4, ipnet.IP6),
 					api.CleanupAllowAsync,
 				)
-				require.Equal(t, tc.code, code)
+				require.Equal(t, tc.code, code.Code)
+				switch name {
+				case "success", "empty-list-still-deleted":
+					require.Nil(t, code.Before)
+					require.Len(t, code.Stages, 1)
+					require.True(t, code.Stages[0].WholeList)
+					require.Equal(t, api.WAFBatchCompleted, code.Stages[0].Result.Status)
+				case "list-not-found":
+					require.NotNil(t, code.Before)
+					require.False(t, code.Before.Exists)
+					require.Empty(t, code.Before.Items)
+					require.Empty(t, code.Stages)
+				case "list-fail":
+					require.Nil(t, code.Before)
+					require.Empty(t, code.Stages)
+				case "delete-fail/list-items-fail":
+					require.Nil(t, code.Before)
+					require.Len(t, code.Stages, 1)
+					require.Equal(t, api.WAFBatchUnconfirmed, code.Stages[0].Result.Status)
+				}
 				assertHandlersExhausted(t, lh, dh, lih, dih)
 			})
 		})
@@ -276,7 +294,7 @@ func TestFinalCleanWAFListSharedOwnership(t *testing.T) {
 					cleanupFamilies(ipnet.IP4, ipnet.IP6),
 					api.CleanupAllowAsync,
 				)
-				require.Equal(t, tc.code, code)
+				require.Equal(t, tc.code, code.Code)
 				assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
 			})
 		})
@@ -310,7 +328,12 @@ func TestFinalCleanWAFListSharedOwnershipCachedNoop(t *testing.T) {
 			"Managed items in the list %s were already deleted (cached)", "account456/list")
 		code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
 			cleanupFamilies(ipnet.IP4, ipnet.IP6), api.CleanupAllowAsync)
-		require.Equal(t, api.WAFListCleanupNoop, code)
+		require.Equal(t, api.WAFListCleanupNoop, code.Code)
+		require.NotNil(t, code.Before)
+		require.True(t, code.Before.Exists)
+		require.True(t, code.Before.Cached)
+		require.Empty(t, code.Before.Items)
+		require.Empty(t, code.Stages)
 		assertHandlersExhausted(t, listHandler, itemsHandler, deleteHandler)
 	})
 }
@@ -380,7 +403,7 @@ func TestFinalCleanWAFListPartialFamilyCleanup(t *testing.T) {
 				cleanupPP := f.newPreparedPP(tc.prepareCleanupPP)
 				code := f.cfHandle.FinalCleanWAFList(
 					context.Background(), cleanupPP, mockWAFList, "description", tc.managedFamilies, api.CleanupAllowAsync)
-				require.Equal(t, tc.expectedCode, code)
+				require.Equal(t, tc.expectedCode, code.Code)
 
 				if tc.expectedCachedRun {
 					listHandler.setRequestLimit(0)
@@ -425,7 +448,14 @@ func TestFinalCleanWAFListWholeListOwnershipFallbackIgnoresOutdatedCache(t *test
 		)
 		code := f.cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
 			cleanupFamilies(ipnet.IP4, ipnet.IP6), api.CleanupAllowAsync)
-		require.Equal(t, api.WAFListCleanupNoop, code)
+		require.Equal(t, api.WAFListCleanupNoop, code.Code)
+		require.NotNil(t, code.Before)
+		require.True(t, code.Before.Exists)
+		require.False(t, code.Before.Cached)
+		require.Empty(t, code.Before.Items)
+		require.Len(t, code.Stages, 1)
+		require.True(t, code.Stages[0].WholeList)
+		require.Equal(t, api.WAFBatchUnconfirmed, code.Stages[0].Result.Status)
 		assertHandlersExhausted(t, listHandler, deleteListHandler, itemsHandler, deleteItemsHandler)
 	})
 }
@@ -458,7 +488,7 @@ func TestFinalCleanWAFListWholeListModeSafeguard(t *testing.T) {
 			"Managed items in the list %s were already deleted", "account456/list")
 		code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
 			cleanupFamilies(ipnet.IP4, ipnet.IP6), api.CleanupAllowAsync)
-		require.Equal(t, api.WAFListCleanupNoop, code)
+		require.Equal(t, api.WAFListCleanupNoop, code.Code)
 		assertHandlersExhausted(t, listHandler)
 	})
 }
@@ -492,7 +522,7 @@ func TestFinalCleanWAFListWholeListModeSafeguardWithLongRegexPreview(t *testing.
 			"Managed items in the list %s were already deleted", "account456/list")
 		code := cfHandle.FinalCleanWAFList(context.Background(), cleanupPP, mockWAFList, "description",
 			cleanupFamilies(ipnet.IP4, ipnet.IP6), api.CleanupAllowAsync)
-		require.Equal(t, api.WAFListCleanupNoop, code)
+		require.Equal(t, api.WAFListCleanupNoop, code.Code)
 		assertHandlersExhausted(t, listHandler)
 	})
 }

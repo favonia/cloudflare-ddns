@@ -97,7 +97,13 @@ With `UPDATE_CRON=@once` and `DELETE_ON_STOP=true`, run cleanup directly instead
 
 Deletion eligibility is owned by [Ownership Model](ownership-model.markdown) and instantiated for WAF in [WAF Ownership Instantiation](managed-waf-item-ownership.markdown).
 
-Ordinary shutdown may skip completion polling when the API allows it and the result cannot guide further cleanup. This shortens shutdown and reduces the risk of forced termination after the container stop grace period, at the cost of an unknown final outcome. One-shot cleanup instead waits within the configured timeout because confirming completion is its purpose.
+Ordinary shutdown may skip WAF completion polling when the API allows it and the result cannot guide further cleanup. This shortens shutdown and reduces the risk of forced termination after the container stop grace period; accepted work may remain pending. Ordinary WAF updates retain completion waiting. One-shot cleanup instead waits within the configured timeout because confirming completion is its purpose. DNS management writes are synchronous: an unconfirmed result concerns whether the attempted effect completed, not a queued future operation. Public DNS propagation is separate from management completion.
+
+## Reporting Boundaries
+
+The [Notification Model](notification-model.markdown) owns trigger selection, first-known address coverage, observation inference, and envelope composition. A round contributes at most one envelope; scheduled startup and shutdown combine their associated work with lifecycle context. Startup without an immediate update supplies no invented address state. A handled signal during the immediate round reports startup with its interrupted/partial outcome, then reports the separate shutdown flow.
+
+One-shot mode sends its operation or direct-cleanup result without separate startup/shutdown notices. Scheduling failure remains the primary notice when no future run exists, retaining cleanup outcomes and failures in the same envelope. Grouping must preserve the actual work, cleanup waiting, cancellation, heartbeat calls, and exit status; reporting introduces no additional reads or completion waiting. WAF reporting carries already-admitted contents and reached batch/cleanup evidence through these same paths, distinguishing accepted asynchronous cleanup from confirmed completion without changing the work result.
 
 ## Exit Status
 
