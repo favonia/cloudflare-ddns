@@ -55,7 +55,14 @@ type DNSProgress struct {
 // Effects preserves reached operation order and includes only completed or
 // unconfirmed mutations, never planned writes or prerequisite failures. Progress
 // separately records required work, including blocked and unvisited operations
-// that Effects cannot describe. Code retains reconciliation policy.
+// that Effects cannot describe.
+//
+// Code is synchronous: ResponseNoop means the successful initial read required
+// no operations; ResponseUpdated means at least one required operation completed
+// and every required operation completed. ResponseFailed covers read failures and
+// incomplete work, including outcomes the API could not confirm. DNS never
+// returns ResponseUpdating. Completion does not establish managed membership or
+// an independently observed final inventory.
 type DNSResult struct {
 	Code     ResponseCode
 	Before   *DNSSnapshot

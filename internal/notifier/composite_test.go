@@ -93,3 +93,17 @@ func TestComposedSendContinuesAfterFailure(t *testing.T) {
 	ok := notifier.NewComposed(first, second).Send(context.Background(), mockPP, notification)
 	require.False(t, ok)
 }
+
+func TestComposedIgnoresNilNotifiers(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	ppfmt := mocks.NewMockPP(ctrl)
+	child := mocks.NewMockNotifier(ctrl)
+	notification := notifier.NewNotification(notifier.KindUpdate, notifier.NewMessagef("notification"))
+	child.EXPECT().Send(context.Background(), ppfmt, notification).Return(true)
+
+	composed := notifier.NewComposed(nil, notifier.NewComposed(nil, child, nil), nil)
+	require.True(t, composed.Send(context.Background(), ppfmt, notification))
+	require.True(t, notifier.NewComposed(nil, nil).Send(context.Background(), ppfmt, notification))
+}

@@ -31,6 +31,9 @@ func sourceLabel(label string, cached bool) string {
 	return label
 }
 
+// renderDNSBody consumes a row derived from a DNSResult. A no-op has known
+// input; a completed change with a complete delta has a nonempty before or after
+// set. Empty-to-empty reconciliation is a no-op.
 func renderDNSBody(row dnsRow) ([]string, dnsDisclosure) {
 	lines := []string{}
 	disclosed := dnsDisclosure{addresses: nil, knownEmpty: false}
@@ -39,20 +42,13 @@ func renderDNSBody(row dnsRow) ([]string, dnsDisclosure) {
 	}
 	switch {
 	case row.code == setter.ResponseNoop:
-		label := "Current"
 		if row.unexplained {
-			label = "No " + row.family.Describe() + " update needed"
-		}
-		if row.beforeKnown {
-			if row.unexplained {
-				lines = append(lines, sourceLabel(label, row.beforeCached)+": "+renderAddresses(row.before))
-			} else {
-				lines = append(lines, renderDNSContext(row, false))
-			}
-			disclosed = dnsDisclosure{addresses: slices.Clone(row.before), knownEmpty: len(row.before) == 0}
+			label := "No " + row.family.Describe() + " update needed"
+			lines = append(lines, sourceLabel(label, row.beforeCached)+": "+renderAddresses(row.before))
 		} else {
-			lines = append(lines, "No update needed")
+			lines = append(lines, renderDNSContext(row, false))
 		}
+		disclosed = dnsDisclosure{addresses: slices.Clone(row.before), knownEmpty: len(row.before) == 0}
 	case row.code == setter.ResponseUpdated && row.evidence.deltaComplete:
 		after := slices.Clone(row.satisfied)
 		for _, item := range row.evidence.operations {
@@ -79,9 +75,6 @@ func renderDNSBody(row dnsRow) ([]string, dnsDisclosure) {
 		// A complete Added-only delta discloses the explicitly known-empty input.
 		disclosed = dnsDisclosure{addresses: slices.Concat(removed, unchanged), knownEmpty: len(row.before) == 0}
 		lines = append(lines, completenessEnding("address", "addresses", len(added), len(removed), len(unchanged))...)
-		if len(added)+len(removed)+len(unchanged) == 0 {
-			lines = append(lines, renderDNSContext(row, false))
-		}
 	default:
 		progress, represented := renderDNSProgress(row)
 		lines = append(lines, progress...)

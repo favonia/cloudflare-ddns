@@ -12,6 +12,8 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
+// setterResponses collects synchronous DNS outcomes: failed, updated, or no-op.
+// ResponseUpdating belongs to asynchronous WAF operations, not DNS reconciliation.
 type setterResponses map[setter.ResponseCode][]string
 
 func emptySetterResponses() setterResponses {
@@ -103,13 +105,6 @@ func generateClearHeartbeatMessage(ipFamily ipnet.Family, s setterResponses) hea
 
 	var successLines []string
 
-	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		successLines = append(successLines, fmt.Sprintf(
-			"Clearing %s records for %s",
-			ipFamily.RecordType(), pp.Join(domains),
-		))
-	}
-
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		successLines = append(successLines, fmt.Sprintf(
 			"Cleared %s records for %s",
@@ -134,13 +129,6 @@ func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s s
 	}
 
 	var successLines []string
-
-	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		successLines = append(successLines, fmt.Sprintf(
-			"Setting %s records for %s to %s",
-			ipFamily.RecordType(), pp.Join(domains), ipDescription,
-		))
-	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		successLines = append(successLines, fmt.Sprintf(
@@ -184,13 +172,6 @@ func generateFinalDeleteHeartbeatMessage(ipFamily ipnet.Family, s setterResponse
 	}
 
 	var successLines []string
-
-	if domains := s[setter.ResponseUpdating]; len(domains) > 0 {
-		successLines = append(successLines, fmt.Sprintf(
-			"Deleting %s records for %s",
-			ipFamily.RecordType(), pp.Join(domains),
-		))
-	}
 
 	if domains := s[setter.ResponseUpdated]; len(domains) > 0 {
 		successLines = append(successLines, fmt.Sprintf(
