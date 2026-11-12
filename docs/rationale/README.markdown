@@ -1,8 +1,8 @@
 # Rationale Archive
 
-This directory records the reasoning behind durable design choices: evidence, assumptions, alternatives, tradeoffs, and reasons to revisit a decision. Read it when evaluating or changing a design, rather than on every implementation task.
+This directory holds non-normative records of the reasoning behind durable design choices: evidence, assumptions, alternatives, tradeoffs, and reasons to revisit a decision. Read it when evaluating, challenging, or changing a design decision.
 
-Rationale is non-normative. Current contracts and routine guidance belong in [`docs/design/`](../design/README.markdown), with implementation details in code and tests. A candidate discussed here does not change those contracts or establish that its behavior is implemented. When changing a durable decision, update its rationale as well as its governing contract.
+Current normative contracts and guidance belong in [`docs/design/`](../design/README.markdown), with implementation details in code and tests. A candidate discussed here does not change those contracts or establish that its behavior is implemented. When changing a durable decision, update its governing contract and review the relevant rationale. Preserve reasoning that still applies; revise or retire reasoning that no longer does.
 
 ## Authoring
 

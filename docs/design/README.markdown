@@ -1,6 +1,6 @@
 # Design Documents
 
-This directory holds durable design notes for future developers.
+This directory holds current normative design contracts and guidance for future developers.
 
 Use this file as a retrieval map. Do not read the whole tree by default.
 
@@ -43,7 +43,7 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 
 ## Rationale
 
-For lower-frequency review of notification presentation choices, see [Notification Messages rationale](../rationale/notification-messages.markdown). It records arguments and candidate alternatives without replacing the contracts above.
+Rationale is non-normative: it records evidence, assumptions, alternatives, and tradeoffs used to evaluate or challenge design decisions. See [the rationale index](../rationale/README.markdown), including [Notification Messages](../rationale/notification-messages.markdown) for notification presentation choices.
 
 ## Directory Scope
 

@@ -1,6 +1,6 @@
 # Rationale Authoring
 
-Rationale explains why a design is defensible and what would justify changing it. Organize arguments around the decisions a future maintainer needs to evaluate. Keep routine rules in their design owner; link to that owner instead of creating a second contract here.
+Rationale explains why a design is defensible and what would justify changing it. Organize arguments around the decisions a future maintainer needs to evaluate. Keep governing rules in their design owner; link to that owner instead of creating a second contract here.
 
 ## Argument And Evidence
 
