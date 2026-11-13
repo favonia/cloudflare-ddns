@@ -191,48 +191,62 @@ func TestUpdateRecord(t *testing.T) {
 		listRequestLimit      int
 		updateRequestLimit    int
 		desiredParams         api.RecordParams
+		responseParams        api.RecordParams
 		ok                    bool
 		prepareMocks          func(*mocks.MockPP)
 		prepareMocksForCached func(*mocks.MockPP)
 	}{
 		"success": {
-			2, 0, 1,
-			params,
-			true,
-			nil, nil,
+			zoneRequestLimit:      2,
+			listRequestLimit:      0,
+			updateRequestLimit:    1,
+			desiredParams:         params,
+			responseParams:        params,
+			ok:                    true,
+			prepareMocks:          nil,
+			prepareMocksForCached: nil,
 		},
 		"zone-fails": {
-			0, 0, 0,
-			params,
-			false,
-			func(ppfmt *mocks.MockPP) {
+			zoneRequestLimit:   0,
+			listRequestLimit:   0,
+			updateRequestLimit: 0,
+			desiredParams:      params,
+			responseParams:     params,
+			ok:                 false,
+			prepareMocks: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "sub.test.org", gomock.Any())
 			},
-			func(ppfmt *mocks.MockPP) {
+			prepareMocksForCached: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "sub.test.org", gomock.Any())
 			},
 		},
 		"update-fails": {
-			2, 0, 0,
-			params,
-			false,
-			func(ppfmt *mocks.MockPP) {
+			zoneRequestLimit:   2,
+			listRequestLimit:   0,
+			updateRequestLimit: 0,
+			desiredParams:      params,
+			responseParams:     params,
+			ok:                 false,
+			prepareMocks: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of outdated %s record for %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
-			func(ppfmt *mocks.MockPP) {
+			prepareMocksForCached: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of outdated %s record for %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
 		},
 		"mismatched-attributes": {
-			2, 0, 1,
-			api.RecordParams{
+			zoneRequestLimit:   2,
+			listRequestLimit:   0,
+			updateRequestLimit: 1,
+			desiredParams: api.RecordParams{
 				TTL:     200,
 				Proxied: true,
 				Comment: "hello",
 				Tags:    nil,
 			},
-			true,
-			func(ppfmt *mocks.MockPP) {
+			responseParams: params,
+			ok:             true,
+			prepareMocks: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
 					"The TTL for the %s record for %s (ID: %s) is %s, which is different from the fallback TTL %s. You can change the TTL to %s in the Cloudflare dashboard at %s if you want to.",
 					"AAAA", "sub.test.org", api.ID("record1"),
@@ -249,7 +263,7 @@ func TestUpdateRecord(t *testing.T) {
 					"empty", `"hello"`, mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
 			},
-			func(ppfmt *mocks.MockPP) {
+			prepareMocksForCached: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
 					"The TTL for the %s record for %s (ID: %s) is %s, which is different from the fallback TTL %s. You can change the TTL to %s in the Cloudflare dashboard at %s if you want to.",
 					"AAAA", "sub.test.org", api.ID("record1"),
@@ -268,15 +282,19 @@ func TestUpdateRecord(t *testing.T) {
 			},
 		},
 		"policy-equivalent-tags": {
-			2, 0, 1,
-			api.RecordParams{
+			zoneRequestLimit:   2,
+			listRequestLimit:   0,
+			updateRequestLimit: 1,
+			desiredParams: api.RecordParams{
 				TTL:     api.TTLAuto,
 				Proxied: false,
 				Comment: "",
 				Tags:    []string{"name:value", "X:Two"},
 			},
-			true,
-			nil, nil,
+			responseParams:        api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: []string{"x:Two", "NAME:value", "name:value"}},
+			ok:                    true,
+			prepareMocks:          nil,
+			prepareMocksForCached: nil,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -291,27 +309,7 @@ func TestUpdateRecord(t *testing.T) {
 				lrh := newListRecordsHandler(t, f.serveMux, ipnet.IP6, "sub.test.org", []formattedRecord{{ID: "record1", IP: "::1", Comment: "", Tags: nil}})
 				lrh.setRequestLimit(tc.listRequestLimit)
 
-				responseParams := tc.desiredParams
-				if name == "mismatched-attributes" {
-					responseParams = api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: nil}
-				}
-				if name == "mismatched-tags" {
-					responseParams = api.RecordParams{
-						TTL:     tc.desiredParams.TTL,
-						Proxied: tc.desiredParams.Proxied,
-						Comment: tc.desiredParams.Comment,
-						Tags:    []string{"team:ddns"},
-					}
-				}
-				if name == "policy-equivalent-tags" {
-					responseParams = api.RecordParams{
-						TTL:     tc.desiredParams.TTL,
-						Proxied: tc.desiredParams.Proxied,
-						Comment: tc.desiredParams.Comment,
-						Tags:    []string{"x:Two", "NAME:value", "name:value"},
-					}
-				}
-				urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", tc.desiredParams, responseParams)
+				urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", tc.desiredParams, tc.responseParams)
 				urh.setRequestLimit(tc.updateRequestLimit)
 
 				ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
@@ -329,7 +327,7 @@ func TestUpdateRecord(t *testing.T) {
 					rs, cached, ok := f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
 					require.Equal(t, tc.ok, ok)
 					require.True(t, cached)
-					require.Equal(t, []api.Record{{"record1", mustIP("::2"), responseParams}}, rs)
+					require.Equal(t, []api.Record{{"record1", mustIP("::2"), tc.responseParams}}, rs)
 					assertHandlersExhausted(t, zh, lrh, urh)
 				}
 			})

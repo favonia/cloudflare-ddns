@@ -118,16 +118,17 @@ func TestCloudflareTraceHedgeDelay(t *testing.T) {
 
 	now := time.Now()
 	tests := []struct {
-		name     string
-		deadline time.Duration
-		want     time.Duration
-		positive bool
+		name        string
+		deadline    time.Duration
+		hasDeadline bool
+		want        time.Duration
+		positive    bool
 	}{
-		{name: "no-deadline", deadline: 0, want: 250 * time.Millisecond, positive: true},
-		{name: "default-five-seconds", deadline: 5 * time.Second, want: 250 * time.Millisecond, positive: true},
-		{name: "short-two-seconds", deadline: 2 * time.Second, want: 100 * time.Millisecond, positive: true},
-		{name: "long-one-minute", deadline: time.Minute, want: 250 * time.Millisecond, positive: true},
-		{name: "expired-deadline", deadline: -time.Second, want: 0, positive: false},
+		{name: "no-deadline", deadline: 0, hasDeadline: false, want: 250 * time.Millisecond, positive: true},
+		{name: "default-five-seconds", deadline: 5 * time.Second, hasDeadline: true, want: 250 * time.Millisecond, positive: true},
+		{name: "short-two-seconds", deadline: 2 * time.Second, hasDeadline: true, want: 100 * time.Millisecond, positive: true},
+		{name: "long-one-minute", deadline: time.Minute, hasDeadline: true, want: 250 * time.Millisecond, positive: true},
+		{name: "expired-deadline", deadline: -time.Second, hasDeadline: true, want: 0, positive: false},
 	}
 
 	for _, test := range tests {
@@ -135,7 +136,7 @@ func TestCloudflareTraceHedgeDelay(t *testing.T) {
 			t.Parallel()
 
 			ctx := context.Background()
-			if test.name != "no-deadline" {
+			if test.hasDeadline {
 				var cancel context.CancelFunc
 				ctx, cancel = context.WithDeadline(ctx, now.Add(test.deadline))
 				defer cancel()

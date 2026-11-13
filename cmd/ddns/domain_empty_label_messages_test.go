@@ -16,12 +16,14 @@ import (
 )
 
 type domainEmptyLabelScenario struct {
-	name     string
-	setting  string
-	input    string
-	accepted bool
-	checks   bool
-	render   func(*testing.T, pp.Verbosity) (string, bool)
+	name          string
+	goldenKey     string // Directory under testdata/domain-empty-label-messages, independent of the display name.
+	setting       string
+	input         string
+	accepted      bool
+	checks        bool
+	readsSettings bool
+	render        func(*testing.T, pp.Verbosity) (string, bool)
 }
 
 //nolint:paralleltest // Scenario renderers mutate process environment variables.
@@ -45,7 +47,7 @@ func TestDomainEmptyLabelMessages(t *testing.T) {
 					} else {
 						require.Contains(t, actual, "😡")
 					}
-					if output.verbosity == pp.Verbose && scenario.name != "plain-list-leading-dot" {
+					if output.verbosity == pp.Verbose && scenario.readsSettings {
 						require.Contains(t, actual, "📖 Reading settings . . .")
 						require.Contains(t, actual, "🔸")
 						if scenario.checks {
@@ -54,17 +56,17 @@ func TestDomainEmptyLabelMessages(t *testing.T) {
 							require.NotContains(t, actual, "📖 Checking settings . . .")
 						}
 					}
-					requireDomainEmptyLabelGolden(t, scenario.name, output.name, actual)
+					requireDomainEmptyLabelGolden(t, scenario.goldenKey, output.name, actual)
 				})
 			}
 			if !scenario.accepted {
 				t.Run("heartbeat", func(t *testing.T) {
 					t.Parallel()
-					requireDomainEmptyLabelGolden(t, scenario.name, "heartbeat", heartbeat.NewMessagef(false, "Configuration errors").Format())
+					requireDomainEmptyLabelGolden(t, scenario.goldenKey, "heartbeat", heartbeat.NewMessagef(false, "Configuration errors").Format())
 				})
 				t.Run("notifier", func(t *testing.T) {
 					t.Parallel()
-					requireDomainEmptyLabelGolden(t, scenario.name, "notifier", startupFailureNotification().Format())
+					requireDomainEmptyLabelGolden(t, scenario.goldenKey, "notifier", startupFailureNotification().Format())
 				})
 			}
 		})
@@ -81,116 +83,144 @@ func requireDomainEmptyLabelGolden(t *testing.T, scenario, surface, actual strin
 func domainEmptyLabelScenarios() []domainEmptyLabelScenario {
 	return []domainEmptyLabelScenario{
 		{
-			name:     "leading-dot",
-			setting:  "IP4_DOMAINS",
-			input:    ".leading.example",
-			accepted: true,
-			checks:   true,
-			render:   renderBootstrapScenario("IP4_DOMAINS", ".leading.example"),
+			name:          "leading-dot",
+			goldenKey:     "leading-dot",
+			setting:       "IP4_DOMAINS",
+			input:         ".leading.example",
+			accepted:      true,
+			checks:        true,
+			readsSettings: true,
+			render:        renderBootstrapScenario("IP4_DOMAINS", ".leading.example"),
 		},
 		{
-			name:     "extra-trailing-dots",
-			setting:  "IP4_DOMAINS",
-			input:    "trailing.example..",
-			accepted: true,
-			checks:   true,
-			render:   renderBootstrapScenario("IP4_DOMAINS", "trailing.example.."),
+			name:          "extra-trailing-dots",
+			goldenKey:     "extra-trailing-dots",
+			setting:       "IP4_DOMAINS",
+			input:         "trailing.example..",
+			accepted:      true,
+			checks:        true,
+			readsSettings: true,
+			render:        renderBootstrapScenario("IP4_DOMAINS", "trailing.example.."),
 		},
 		{
-			name:     "leading-and-extra-trailing-dots",
-			setting:  "IP4_DOMAINS",
-			input:    ".both.example..",
-			accepted: true,
-			checks:   true,
-			render:   renderBootstrapScenario("IP4_DOMAINS", ".both.example.."),
+			name:          "leading-and-extra-trailing-dots",
+			goldenKey:     "leading-and-extra-trailing-dots",
+			setting:       "IP4_DOMAINS",
+			input:         ".both.example..",
+			accepted:      true,
+			checks:        true,
+			readsSettings: true,
+			render:        renderBootstrapScenario("IP4_DOMAINS", ".both.example.."),
 		},
 		{
-			name:     "repeated-effective-target",
-			setting:  "IP4_DOMAINS",
-			input:    ".repeat.example,repeat.example..,.repeat.example",
-			accepted: true,
-			checks:   true,
-			render:   renderBootstrapScenario("IP4_DOMAINS", ".repeat.example,repeat.example..,.repeat.example"),
+			name:          "repeated-effective-target",
+			goldenKey:     "repeated-effective-target",
+			setting:       "IP4_DOMAINS",
+			input:         ".repeat.example,repeat.example..,.repeat.example",
+			accepted:      true,
+			checks:        true,
+			readsSettings: true,
+			render:        renderBootstrapScenario("IP4_DOMAINS", ".repeat.example,repeat.example..,.repeat.example"),
 		},
 		{
-			name:     "plain-interior-empty-label",
-			setting:  "IP4_DOMAINS",
-			input:    "plain..empty.example",
-			accepted: false,
-			checks:   false,
-			render:   renderBootstrapScenario("IP4_DOMAINS", "plain..empty.example"),
+			name:          "plain-interior-empty-label",
+			goldenKey:     "plain-interior-empty-label",
+			setting:       "IP4_DOMAINS",
+			input:         "plain..empty.example",
+			accepted:      false,
+			checks:        false,
+			readsSettings: true,
+			render:        renderBootstrapScenario("IP4_DOMAINS", "plain..empty.example"),
 		},
 		{
-			name:     "wildcard-immediate-empty-label",
-			setting:  "PROXIED",
-			input:    "sub(*..wildcard.example)",
-			accepted: false,
-			checks:   true,
-			render:   renderBootstrapScenario("PROXIED", "sub(*..wildcard.example)"),
+			name:          "wildcard-immediate-empty-label",
+			goldenKey:     "wildcard-immediate-empty-label",
+			setting:       "PROXIED",
+			input:         "sub(*..wildcard.example)",
+			accepted:      false,
+			checks:        true,
+			readsSettings: true,
+			render:        renderBootstrapScenario("PROXIED", "sub(*..wildcard.example)"),
 		},
 		{
-			name:     "wildcard-later-empty-label",
-			setting:  "PROXIED",
-			input:    "sub(*.later..empty.example)",
-			accepted: false,
-			checks:   true,
-			render:   renderBootstrapScenario("PROXIED", "sub(*.later..empty.example)"),
+			name:          "wildcard-later-empty-label",
+			goldenKey:     "wildcard-later-empty-label",
+			setting:       "PROXIED",
+			input:         "sub(*.later..empty.example)",
+			accepted:      false,
+			checks:        true,
+			readsSettings: true,
+			render:        renderBootstrapScenario("PROXIED", "sub(*.later..empty.example)"),
 		},
 		{
-			name:     "plain-list-leading-dot",
-			setting:  "DOMAINS",
-			input:    ".equivalent.example",
-			accepted: true,
-			checks:   true,
-			render:   renderPlainListScenario("DOMAINS", ".equivalent.example"),
+			name:          "plain-list-leading-dot",
+			goldenKey:     "plain-list-leading-dot",
+			setting:       "DOMAINS",
+			input:         ".equivalent.example",
+			accepted:      true,
+			checks:        true,
+			readsSettings: false,
+			render:        renderPlainListScenario("DOMAINS", ".equivalent.example"),
 		},
 		{
-			name:     "proxied-is-leading-dot",
-			setting:  "PROXIED",
-			input:    "is(.equivalent.example)",
-			accepted: true,
-			checks:   true,
-			render:   renderBootstrapScenario("PROXIED", "is(.equivalent.example)"),
+			name:          "proxied-is-leading-dot",
+			goldenKey:     "proxied-is-leading-dot",
+			setting:       "PROXIED",
+			input:         "is(.equivalent.example)",
+			accepted:      true,
+			checks:        true,
+			readsSettings: true,
+			render:        renderBootstrapScenario("PROXIED", "is(.equivalent.example)"),
 		},
 		{
-			name:     "proxied-sub-leading-dot",
-			setting:  "PROXIED",
-			input:    "sub(.equivalent.example)",
-			accepted: true,
-			checks:   true,
-			render:   renderBootstrapScenario("PROXIED", "sub(.equivalent.example)"),
+			name:          "proxied-sub-leading-dot",
+			goldenKey:     "proxied-sub-leading-dot",
+			setting:       "PROXIED",
+			input:         "sub(.equivalent.example)",
+			accepted:      true,
+			checks:        true,
+			readsSettings: true,
+			render:        renderBootstrapScenario("PROXIED", "sub(.equivalent.example)"),
 		},
 		{
-			name:     "adjacent-warnings",
-			setting:  "IP4_DOMAINS",
-			input:    ",.extra.example .missing.example..",
-			accepted: true,
-			checks:   true,
-			render:   renderBootstrapScenario("IP4_DOMAINS", ",.extra.example .missing.example.."),
+			name:          "adjacent-warnings",
+			goldenKey:     "adjacent-warnings",
+			setting:       "IP4_DOMAINS",
+			input:         ",.extra.example .missing.example..",
+			accepted:      true,
+			checks:        true,
+			readsSettings: true,
+			render:        renderBootstrapScenario("IP4_DOMAINS", ",.extra.example .missing.example.."),
 		},
 		{
-			name:     "accepted-normalization-before-fatal",
-			setting:  "IP4_DOMAINS",
-			input:    ".accepted.example,fatal..empty.example",
-			accepted: false,
-			checks:   false,
-			render:   renderBootstrapScenario("IP4_DOMAINS", ".accepted.example,fatal..empty.example"),
+			name:          "accepted-normalization-before-fatal",
+			goldenKey:     "accepted-normalization-before-fatal",
+			setting:       "IP4_DOMAINS",
+			input:         ".accepted.example,fatal..empty.example",
+			accepted:      false,
+			checks:        false,
+			readsSettings: true,
+			render:        renderBootstrapScenario("IP4_DOMAINS", ".accepted.example,fatal..empty.example"),
 		},
 		{
-			name:     "multiple-consecutive-dot-runs",
-			setting:  "IP4_DOMAINS",
-			input:    "a......b.....c.....d",
-			accepted: false,
-			checks:   false,
-			render:   renderBootstrapScenario("IP4_DOMAINS", "a......b.....c.....d"),
+			name:          "multiple-consecutive-dot-runs",
+			goldenKey:     "multiple-consecutive-dot-runs",
+			setting:       "IP4_DOMAINS",
+			input:         "a......b.....c.....d",
+			accepted:      false,
+			checks:        false,
+			readsSettings: true,
+			render:        renderBootstrapScenario("IP4_DOMAINS", "a......b.....c.....d"),
 		},
 		{
-			name:     "wildcard-multiple-consecutive-dot-runs",
-			setting:  "PROXIED",
-			input:    "sub(*......a.....b)",
-			accepted: false,
-			checks:   true,
-			render:   renderBootstrapScenario("PROXIED", "sub(*......a.....b)"),
+			name:          "wildcard-multiple-consecutive-dot-runs",
+			goldenKey:     "wildcard-multiple-consecutive-dot-runs",
+			setting:       "PROXIED",
+			input:         "sub(*......a.....b)",
+			accepted:      false,
+			checks:        true,
+			readsSettings: true,
+			render:        renderBootstrapScenario("PROXIED", "sub(*......a.....b)"),
 		},
 	}
 }
