@@ -165,11 +165,13 @@ jobs:
           egress-policy: block
           # The zizmor composite action invokes Docker.
           disable-sudo: true
+          # Docker refreshes Sigstore trust roots for image signature verification.
           allowed-endpoints: >-
             api.github.com:443
             ghcr.io:443
             github.com:443
             pkg-containers.githubusercontent.com:443
+            tuf-repo-cdn.sigstore.dev:443
 
       - name: 🚚 Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
