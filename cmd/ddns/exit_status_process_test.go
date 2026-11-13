@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -43,10 +45,55 @@ func TestExitStatusProcess(t *testing.T) {
 				cmd.Args = append(cmd.Args, "-test.gocoverdir="+dir)
 				cmd.Env = append(cmd.Env, "GOCOVERDIR="+dir)
 			}
+			if scenario == "stop-cleanup-failure" {
+				requireExitAfterCountdown(t, cmd)
+				return
+			}
 			output, err := cmd.CombinedOutput()
 			require.NoError(t, err, "%s", output)
 		})
 	}
+}
+
+// requireExitAfterCountdown waits for the scheduled-idle state before signaling.
+// Observing the existing countdown output avoids racing cancellation against the
+// update loop's signal check; it also verifies shutdown after reaching that state.
+// The caller must bound cmd with a context deadline in case no countdown appears.
+func requireExitAfterCountdown(t *testing.T, cmd *exec.Cmd) {
+	t.Helper()
+	stdout, err := cmd.StdoutPipe()
+	require.NoError(t, err)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	require.NoError(t, cmd.Start())
+
+	var output strings.Builder
+	signaled := false
+	var signalErr error
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+		output.WriteString(line + "\n")
+		if !signaled && strings.Contains(line, "Checking the IP addresses") {
+			signalErr = cmd.Process.Signal(syscall.SIGTERM)
+			signaled = true
+			if signalErr != nil {
+				break
+			}
+		}
+	}
+	var killErr error
+	if scanner.Err() != nil || signalErr != nil {
+		killErr = cmd.Process.Kill()
+	}
+	err = cmd.Wait()
+	if !errors.Is(killErr, os.ErrProcessDone) {
+		require.NoError(t, killErr)
+	}
+	require.NoError(t, scanner.Err())
+	require.NoError(t, signalErr)
+	require.True(t, signaled, "scheduled countdown was not observed:\n%s%s", output.String(), stderr.String())
+	require.NoError(t, err, "%s%s", output.String(), stderr.String())
 }
 
 //nolint:paralleltest // The isolated child changes environment, HTTP transport, and signal registrations.
@@ -131,7 +178,7 @@ func (transport *exitStatusTransport) RoundTrip(r *http.Request) (*http.Response
 	transport.mu.Lock()
 	defer transport.mu.Unlock()
 	if r.URL.Host == "report.example" {
-		if strings.HasPrefix(transport.scenario, "stop-") && r.URL.Path != "/check/start" && !transport.stopping {
+		if transport.scenario == "stop-after-update-failure" && r.URL.Path != "/check/start" && !transport.stopping {
 			transport.stopping = true
 			if err := syscall.Kill(os.Getpid(), syscall.SIGTERM); err != nil {
 				return nil, fmt.Errorf("signal test process: %w", err)
