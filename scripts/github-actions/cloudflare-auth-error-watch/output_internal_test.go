@@ -17,10 +17,12 @@ import (
 )
 
 // watchOutputFixture carries subprocess behavior independently of the display name.
+// Its zero value returns the expected authentication errors without rate limiting.
+// LimitedAttempts fields rate-limit the first N attempts; negative values never recover.
 type watchOutputFixture struct {
-	RawLimitedAttempts int32 `json:"rawLimitedAttempts"` // -1 means every attempt is rate limited.
+	RawLimitedAttempts int32 `json:"rawLimitedAttempts"`
 	SDKLimitedAttempts int32 `json:"sdkLimitedAttempts"`
-	RawFirstIndex      int   `json:"rawFirstIndex"`
+	RawFirstIndex      int   `json:"rawFirstIndex"` // Response for /raw/0: 0 = invalid token, 2 = authentication error.
 	RawMalformed       bool  `json:"rawMalformed"`
 	TruncateBody       bool  `json:"truncateBody"`
 	FailSDK            bool  `json:"failSdk"`

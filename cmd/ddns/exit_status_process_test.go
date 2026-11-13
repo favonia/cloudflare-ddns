@@ -23,7 +23,9 @@ import (
 
 // exitStatusCase is shared by the parent and child. Names are only display labels
 // and opaque lookup keys; configuration, assertions, and signal timing live here.
-// Nil hooks use the normal successful API fixture and ordinary process completion.
+// The child applies env overrides, runs arrange before realMain, and runs verify
+// afterward with recorded API requests. Nil arrange and verify hooks add no work.
+// The parent uses wait to start and reap the child; nil uses CombinedOutput.
 type exitStatusCase struct {
 	name     string
 	env      map[string]string

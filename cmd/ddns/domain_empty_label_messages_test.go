@@ -17,7 +17,7 @@ import (
 
 type domainEmptyLabelScenario struct {
 	name          string
-	goldenKey     string
+	goldenKey     string // Directory under testdata/domain-empty-label-messages, independent of the display name.
 	setting       string
 	input         string
 	accepted      bool

@@ -58,6 +58,9 @@ func cloudflareTraceTranscriptEndpointIndex(path string) int {
 	}
 }
 
+// Response slots follow primary, fallback, then tertiary endpoint order.
+// timeout cancels detection after observing a request and renders the resulting
+// deadline failure; it does not wait for a wall-clock deadline to expire.
 type cloudflareTraceTranscriptFixture struct {
 	responses [3]string // Empty responses wait for request cancellation; {host} expands to the request host.
 	timeout   bool

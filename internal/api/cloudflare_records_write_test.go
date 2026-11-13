@@ -197,44 +197,56 @@ func TestUpdateRecord(t *testing.T) {
 		prepareMocksForCached func(*mocks.MockPP)
 	}{
 		"success": {
-			2, 0, 1,
-			params, params,
-			true,
-			nil, nil,
+			zoneRequestLimit:      2,
+			listRequestLimit:      0,
+			updateRequestLimit:    1,
+			desiredParams:         params,
+			responseParams:        params,
+			ok:                    true,
+			prepareMocks:          nil,
+			prepareMocksForCached: nil,
 		},
 		"zone-fails": {
-			0, 0, 0,
-			params, params,
-			false,
-			func(ppfmt *mocks.MockPP) {
+			zoneRequestLimit:   0,
+			listRequestLimit:   0,
+			updateRequestLimit: 0,
+			desiredParams:      params,
+			responseParams:     params,
+			ok:                 false,
+			prepareMocks: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "sub.test.org", gomock.Any())
 			},
-			func(ppfmt *mocks.MockPP) {
+			prepareMocksForCached: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Failed to check if a zone named %s exists: %v", "sub.test.org", gomock.Any())
 			},
 		},
 		"update-fails": {
-			2, 0, 0,
-			params, params,
-			false,
-			func(ppfmt *mocks.MockPP) {
+			zoneRequestLimit:   2,
+			listRequestLimit:   0,
+			updateRequestLimit: 0,
+			desiredParams:      params,
+			responseParams:     params,
+			ok:                 false,
+			prepareMocks: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of outdated %s record for %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
-			func(ppfmt *mocks.MockPP) {
+			prepareMocksForCached: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiError, "Could not confirm update of outdated %s record for %s (ID: %s): %v", "AAAA", "sub.test.org", api.ID("record1"), gomock.Any())
 			},
 		},
 		"mismatched-attributes": {
-			2, 0, 1,
-			api.RecordParams{
+			zoneRequestLimit:   2,
+			listRequestLimit:   0,
+			updateRequestLimit: 1,
+			desiredParams: api.RecordParams{
 				TTL:     200,
 				Proxied: true,
 				Comment: "hello",
 				Tags:    nil,
 			},
-			params,
-			true,
-			func(ppfmt *mocks.MockPP) {
+			responseParams: params,
+			ok:             true,
+			prepareMocks: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
 					"The TTL for the %s record for %s (ID: %s) is %s, which is different from the fallback TTL %s. You can change the TTL to %s in the Cloudflare dashboard at %s if you want to.",
 					"AAAA", "sub.test.org", api.ID("record1"),
@@ -251,7 +263,7 @@ func TestUpdateRecord(t *testing.T) {
 					"empty", `"hello"`, mockDNSRecordsDeeplink(mockID("test.org", 0)),
 				)
 			},
-			func(ppfmt *mocks.MockPP) {
+			prepareMocksForCached: func(ppfmt *mocks.MockPP) {
 				ppfmt.EXPECT().Noticef(pp.EmojiUserWarning,
 					"The TTL for the %s record for %s (ID: %s) is %s, which is different from the fallback TTL %s. You can change the TTL to %s in the Cloudflare dashboard at %s if you want to.",
 					"AAAA", "sub.test.org", api.ID("record1"),
@@ -270,16 +282,19 @@ func TestUpdateRecord(t *testing.T) {
 			},
 		},
 		"policy-equivalent-tags": {
-			2, 0, 1,
-			api.RecordParams{
+			zoneRequestLimit:   2,
+			listRequestLimit:   0,
+			updateRequestLimit: 1,
+			desiredParams: api.RecordParams{
 				TTL:     api.TTLAuto,
 				Proxied: false,
 				Comment: "",
 				Tags:    []string{"name:value", "X:Two"},
 			},
-			api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: []string{"x:Two", "NAME:value", "name:value"}},
-			true,
-			nil, nil,
+			responseParams:        api.RecordParams{TTL: api.TTLAuto, Proxied: false, Comment: "", Tags: []string{"x:Two", "NAME:value", "name:value"}},
+			ok:                    true,
+			prepareMocks:          nil,
+			prepareMocksForCached: nil,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
