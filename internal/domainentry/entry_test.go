@@ -353,39 +353,44 @@ func TestParseEntriesReportsDotTrimmingOccurrences(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
-		name        string
-		input       string
-		span        syntax.Span
-		dotTrimming domain.DotTrimming
-		effective   domain.Domain
+		name         string
+		input        string
+		span         syntax.Span
+		dotTrimming  domain.DotTrimming
+		effective    domain.Domain
+		hostID6Count int
 	}{
 		{
-			name:        "leading dots",
-			input:       ".good.example",
-			span:        syntax.Span{Start: 0, End: 13},
-			dotTrimming: expectedDotTrimming(true, false),
-			effective:   domain.FQDN("good.example"),
+			name:         "leading dots",
+			input:        ".good.example",
+			span:         syntax.Span{Start: 0, End: 13},
+			dotTrimming:  expectedDotTrimming(true, false),
+			effective:    domain.FQDN("good.example"),
+			hostID6Count: 0,
 		},
 		{
-			name:        "extra trailing dots",
-			input:       "good.example..",
-			span:        syntax.Span{Start: 0, End: 14},
-			dotTrimming: expectedDotTrimming(false, true),
-			effective:   domain.FQDN("good.example"),
+			name:         "extra trailing dots",
+			input:        "good.example..",
+			span:         syntax.Span{Start: 0, End: 14},
+			dotTrimming:  expectedDotTrimming(false, true),
+			effective:    domain.FQDN("good.example"),
+			hostID6Count: 0,
 		},
 		{
-			name:        "combined boundary dots",
-			input:       ".good.example..",
-			span:        syntax.Span{Start: 0, End: 15},
-			dotTrimming: expectedDotTrimming(true, true),
-			effective:   domain.FQDN("good.example"),
+			name:         "combined boundary dots",
+			input:        ".good.example..",
+			span:         syntax.Span{Start: 0, End: 15},
+			dotTrimming:  expectedDotTrimming(true, true),
+			effective:    domain.FQDN("good.example"),
+			hostID6Count: 0,
 		},
 		{
-			name:        "hostid6 field",
-			input:       ".good.example{hostid6=::1}",
-			span:        syntax.Span{Start: 0, End: 13},
-			dotTrimming: expectedDotTrimming(true, false),
-			effective:   domain.FQDN("good.example"),
+			name:         "hostid6 field",
+			input:        ".good.example{hostid6=::1}",
+			span:         syntax.Span{Start: 0, End: 13},
+			dotTrimming:  expectedDotTrimming(true, false),
+			effective:    domain.FQDN("good.example"),
+			hostID6Count: 1,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -396,9 +401,7 @@ func TestParseEntriesReportsDotTrimmingOccurrences(t *testing.T) {
 			require.Nil(t, err)
 			require.Len(t, entries, 1)
 			require.Equal(t, tc.effective, entries[0].Domain)
-			if tc.name == "hostid6 field" {
-				require.Len(t, entries[0].HostID6Opinions, 1)
-			}
+			require.Len(t, entries[0].HostID6Opinions, tc.hostID6Count)
 			require.Equal(t, []domainentry.DiagnosticKind{domainentry.KindDomainDotTrimming}, diagnosticKinds(diagnostics))
 			require.Equal(t, tc.span, diagnostics[0].Span)
 			require.NoError(t, diagnostics[0].Detail)

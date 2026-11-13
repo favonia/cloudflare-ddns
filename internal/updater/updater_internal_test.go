@@ -58,8 +58,13 @@ func cloudflareTraceTranscriptEndpointIndex(path string) int {
 	}
 }
 
+type cloudflareTraceTranscriptFixture struct {
+	responses [3]string // Empty responses wait for request cancellation; {host} expands to the request host.
+	timeout   bool
+}
+
 func captureCloudflareTraceDetectionTranscript(
-	t *testing.T, scenario string, verbosity pp.Verbosity,
+	t *testing.T, fixture cloudflareTraceTranscriptFixture, verbosity pp.Verbosity,
 ) cloudflareTraceTranscriptCapture {
 	t.Helper()
 
@@ -74,72 +79,17 @@ func captureCloudflareTraceDetectionTranscript(
 		requestCounts[index].Add(1)
 		requestObserved <- struct{}{}
 
-		switch scenario {
-		case "primary-clean-success":
-			if index > 0 {
-				<-req.Context().Done()
-				return
-			}
+		if response := fixture.responses[index]; response != "" {
 			//nolint:gosec // The httptest request host is required by the trace-response fixture.
-			_, _ = fmt.Fprintf(w, "h=%s\nip=203.0.113.7\nwarp=off\n", req.Host)
-
-		case "fallback-clean-success":
-			if index == 0 {
-				//nolint:gosec // The httptest request host is required by the trace-response fixture.
-				_, _ = fmt.Fprintf(w, "h=%s\nwarp=off\n", req.Host)
-				return
-			}
-			if index > 1 {
-				<-req.Context().Done()
-				return
-			}
-			//nolint:gosec // The httptest request host is required by the trace-response fixture.
-			_, _ = fmt.Fprintf(w, "h=%s\nip=203.0.113.7\nwarp=off\n", req.Host)
-
-		case "primary-winner-missing-h", "primary-winner-missing-warp", "primary-winner-missing-both",
-			"fallback-winner-missing-h", "fallback-winner-missing-warp", "fallback-winner-missing-both":
-			isFallbackScenario := strings.HasPrefix(scenario, "fallback-")
-			if isFallbackScenario && index == 0 {
-				//nolint:gosec // The httptest request host is required by the trace-response fixture.
-				_, _ = fmt.Fprintf(w, "h=%s\nwarp=off\n", req.Host)
-				return
-			}
-			if (!isFallbackScenario && index > 0) || (isFallbackScenario && index > 1) {
-				<-req.Context().Done()
-				return
-			}
-			switch {
-			case strings.HasSuffix(scenario, "-h"):
-				_, _ = fmt.Fprint(w, "ip=203.0.113.7\nwarp=off\n")
-			case strings.HasSuffix(scenario, "-warp"):
-				//nolint:gosec // The httptest request host is required by the trace-response fixture.
-				_, _ = fmt.Fprintf(w, "h=%s\nip=203.0.113.7\n", req.Host)
-			case strings.HasSuffix(scenario, "-both"):
-				_, _ = fmt.Fprint(w, "ip=203.0.113.7\n")
-			}
-
-		case "complete-mixed-failure":
-			switch index {
-			case 0:
-				_, _ = fmt.Fprint(w, "warp=off\n")
-			case 1:
-				_, _ = fmt.Fprint(w, "h=wrong.example\nip=203.0.113.7\nwarp=off\n")
-			case 2:
-				//nolint:gosec // The httptest request host is required by the trace-response fixture.
-				_, _ = fmt.Fprintf(w, "h=%s\nip=2001:db8::1\nwarp=off\n", req.Host)
-			}
-
-		case "shared-detection-timeout":
+			_, _ = fmt.Fprint(w, strings.ReplaceAll(response, "{host}", req.Host))
+		} else {
 			<-req.Context().Done()
-
-		default:
-			t.Errorf("unknown transcript scenario %q", scenario)
 		}
 	}))
 	t.Cleanup(server.Close)
 
 	detectionTimeout := time.Hour
-	if scenario == "shared-detection-timeout" {
+	if fixture.timeout {
 		detectionTimeout = 100 * time.Millisecond
 	}
 	endpoints := cloudflareTraceTranscriptEndpoints(server.URL)
@@ -158,7 +108,7 @@ func captureCloudflareTraceDetectionTranscript(
 	var output strings.Builder
 	ppfmt := pp.New(&output, false, verbosity)
 	var msg Message
-	if scenario == "shared-detection-timeout" {
+	if fixture.timeout {
 		providerCtx, cancelProvider := context.WithCancelCause(context.Background())
 		defer cancelProvider(context.Canceled)
 		rawDataChannel := make(chan provider.DetectionResult, 1)
@@ -193,79 +143,109 @@ func captureCloudflareTraceDetectionTranscript(
 func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 	t.Parallel()
 
-	for _, scenario := range []string{
-		"primary-clean-success",
-		"fallback-clean-success",
-		"complete-mixed-failure",
-		"shared-detection-timeout",
-	} {
-		t.Run(scenario, func(t *testing.T) {
-			t.Parallel()
-
-			for _, verbosity := range []pp.Verbosity{pp.Verbose, pp.Quiet} {
-				capture := captureCloudflareTraceDetectionTranscript(t, scenario, verbosity)
+	for _, tc := range []struct {
+		name    string
+		fixture cloudflareTraceTranscriptFixture
+		check   func(*testing.T, cloudflareTraceTranscriptCapture, pp.Verbosity) string
+	}{
+		{
+			name:    "primary-clean-success",
+			fixture: cloudflareTraceTranscriptFixture{responses: [3]string{"h={host}\nip=203.0.113.7\nwarp=off\n", "", ""}, timeout: false},
+			check: func(t *testing.T, capture cloudflareTraceTranscriptCapture, verbosity pp.Verbosity) string {
+				t.Helper()
 				var wantTranscript string
 
-				switch scenario {
-				case "primary-clean-success":
-					// Mutation caught: adding provider chatter to a clean primary success.
-					require.Empty(t, capture.heartbeat)
-					require.Empty(t, capture.notifier)
-					require.Equal(t, int32(1), capture.requestCounts[0])
-					require.LessOrEqual(t, capture.requestCounts[1], int32(1))
-					require.LessOrEqual(t, capture.requestCounts[2], int32(1))
-					require.False(t, capture.winnerWarnings)
-					if verbosity == pp.Verbose {
-						wantTranscript = "Detected IPv4 address: 203.0.113.7\n"
-					}
-
-				case "fallback-clean-success":
-					// Mutation caught: claiming the primary failed, exposing loser diagnostics, or losing quiet suppression.
-					require.Empty(t, capture.heartbeat)
-					require.Empty(t, capture.notifier)
-					require.Equal(t, int32(1), capture.requestCounts[0])
-					require.Equal(t, int32(1), capture.requestCounts[1])
-					require.LessOrEqual(t, capture.requestCounts[2], int32(1))
-					require.False(t, capture.winnerWarnings)
-					if verbosity == pp.Verbose {
-						wantTranscript = fmt.Sprintf(
-							"Cloudflare trace IPv4 detection used fallback endpoint %s\n"+
-								"Detected IPv4 address: 203.0.113.7\n",
-							capture.endpoints[1],
-						)
-					}
-
-				case "complete-mixed-failure":
-					// Mutation caught: omitting endpoint context, replaying failed-attempt warnings, or promising another run.
-					require.Equal(t, "Failed to detect any IPv4 addresses", capture.heartbeat)
-					require.Equal(t, "Failed to detect any IPv4 addresses.", capture.notifier)
-					require.Equal(t, [3]int32{1, 1, 1}, capture.requestCounts)
-					require.False(t, capture.winnerWarnings)
-					host := strings.TrimSuffix(strings.TrimPrefix(capture.endpoints[0], "http://"), "/primary")
-					wantTranscript = fmt.Sprintf(
-						"Cloudflare trace IPv4 detection via %s failed: the response does not contain an \"ip\" field\n"+
-							"Cloudflare trace IPv4 detection via %s failed: the \"h\" field \"wrong.example\" does not match the expected host \"%s\"; please report this at https://github.com/favonia/cloudflare-ddns/issues/new/choose\n"+
-							"Cloudflare trace IPv4 detection via %s failed: the detected IP address 2001:db8::1 is not a valid IPv4 address\n"+
-							"No valid IPv4 addresses were detected\n"+
-							"If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none\n",
-						capture.endpoints[0], capture.endpoints[1], host, capture.endpoints[2],
-					)
-
-				case "shared-detection-timeout":
-					// Mutation caught: repeating worker deadlines or placing family guidance before timeout remediation.
-					require.Equal(t, "Failed to detect any IPv4 addresses", capture.heartbeat)
-					require.Equal(t, "Failed to detect any IPv4 addresses.", capture.notifier)
-					require.Equal(t, int32(1), capture.requestCounts[0])
-					require.LessOrEqual(t, capture.requestCounts[1], int32(1))
-					require.LessOrEqual(t, capture.requestCounts[2], int32(1))
-					require.False(t, capture.winnerWarnings)
-					wantTranscript = "Cloudflare trace IPv4 detection timed out before any endpoint returned a valid response\n" +
-						"No valid IPv4 addresses were detected\n" +
-						"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=100ms\n" +
-						"If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none\n"
+				// Mutation caught: adding provider chatter to a clean primary success.
+				require.Empty(t, capture.heartbeat)
+				require.Empty(t, capture.notifier)
+				require.Equal(t, int32(1), capture.requestCounts[0])
+				require.LessOrEqual(t, capture.requestCounts[1], int32(1))
+				require.LessOrEqual(t, capture.requestCounts[2], int32(1))
+				require.False(t, capture.winnerWarnings)
+				if verbosity == pp.Verbose {
+					wantTranscript = "Detected IPv4 address: 203.0.113.7\n"
 				}
 
-				require.Equal(t, wantTranscript, capture.transcript)
+				return wantTranscript
+			},
+		},
+		{
+			name:    "fallback-clean-success",
+			fixture: cloudflareTraceTranscriptFixture{responses: [3]string{"h={host}\nwarp=off\n", "h={host}\nip=203.0.113.7\nwarp=off\n", ""}, timeout: false},
+			check: func(t *testing.T, capture cloudflareTraceTranscriptCapture, verbosity pp.Verbosity) string {
+				t.Helper()
+				var wantTranscript string
+
+				// Mutation caught: claiming the primary failed, exposing loser diagnostics, or losing quiet suppression.
+				require.Empty(t, capture.heartbeat)
+				require.Empty(t, capture.notifier)
+				require.Equal(t, int32(1), capture.requestCounts[0])
+				require.Equal(t, int32(1), capture.requestCounts[1])
+				require.LessOrEqual(t, capture.requestCounts[2], int32(1))
+				require.False(t, capture.winnerWarnings)
+				if verbosity == pp.Verbose {
+					wantTranscript = fmt.Sprintf(
+						"Cloudflare trace IPv4 detection used fallback endpoint %s\n"+
+							"Detected IPv4 address: 203.0.113.7\n",
+						capture.endpoints[1],
+					)
+				}
+
+				return wantTranscript
+			},
+		},
+		{
+			name:    "complete-mixed-failure",
+			fixture: cloudflareTraceTranscriptFixture{responses: [3]string{"warp=off\n", "h=wrong.example\nip=203.0.113.7\nwarp=off\n", "h={host}\nip=2001:db8::1\nwarp=off\n"}, timeout: false},
+			check: func(t *testing.T, capture cloudflareTraceTranscriptCapture, _ pp.Verbosity) string {
+				t.Helper()
+				var wantTranscript string
+
+				// Mutation caught: omitting endpoint context, replaying failed-attempt warnings, or promising another run.
+				require.Equal(t, "Failed to detect any IPv4 addresses", capture.heartbeat)
+				require.Equal(t, "Failed to detect any IPv4 addresses.", capture.notifier)
+				require.Equal(t, [3]int32{1, 1, 1}, capture.requestCounts)
+				require.False(t, capture.winnerWarnings)
+				host := strings.TrimSuffix(strings.TrimPrefix(capture.endpoints[0], "http://"), "/primary")
+				wantTranscript = fmt.Sprintf(
+					"Cloudflare trace IPv4 detection via %s failed: the response does not contain an \"ip\" field\n"+
+						"Cloudflare trace IPv4 detection via %s failed: the \"h\" field \"wrong.example\" does not match the expected host \"%s\"; please report this at https://github.com/favonia/cloudflare-ddns/issues/new/choose\n"+
+						"Cloudflare trace IPv4 detection via %s failed: the detected IP address 2001:db8::1 is not a valid IPv4 address\n"+
+						"No valid IPv4 addresses were detected\n"+
+						"If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none\n",
+					capture.endpoints[0], capture.endpoints[1], host, capture.endpoints[2],
+				)
+
+				return wantTranscript
+			},
+		},
+		{
+			name:    "shared-detection-timeout",
+			fixture: cloudflareTraceTranscriptFixture{responses: [3]string{}, timeout: true},
+			check: func(t *testing.T, capture cloudflareTraceTranscriptCapture, _ pp.Verbosity) string {
+				t.Helper()
+				var wantTranscript string
+
+				// Mutation caught: repeating worker deadlines or placing family guidance before timeout remediation.
+				require.Equal(t, "Failed to detect any IPv4 addresses", capture.heartbeat)
+				require.Equal(t, "Failed to detect any IPv4 addresses.", capture.notifier)
+				require.Equal(t, int32(1), capture.requestCounts[0])
+				require.LessOrEqual(t, capture.requestCounts[1], int32(1))
+				require.LessOrEqual(t, capture.requestCounts[2], int32(1))
+				require.False(t, capture.winnerWarnings)
+				wantTranscript = "Cloudflare trace IPv4 detection timed out before any endpoint returned a valid response\n" +
+					"No valid IPv4 addresses were detected\n" +
+					"If your network is experiencing high latency, consider increasing DETECTION_TIMEOUT=100ms\n" +
+					"If your network does not support IPv4, you can stop managing it with IP4_PROVIDER=none\n"
+				return wantTranscript
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			for _, verbosity := range []pp.Verbosity{pp.Verbose, pp.Quiet} {
+				capture := captureCloudflareTraceDetectionTranscript(t, tc.fixture, verbosity)
+				require.Equal(t, tc.check(t, capture, verbosity), capture.transcript)
 			}
 		})
 	}
@@ -275,19 +255,25 @@ func TestCloudflareTraceDetectionTranscript(t *testing.T) {
 		winnerIndex   int
 		endpointRole  string
 		missingClause string
+		response      string
 	}{
-		{name: "primary-winner-missing-h", winnerIndex: 0, endpointRole: "primary", missingClause: `but its response is missing the "h" (host) field`},
-		{name: "primary-winner-missing-warp", winnerIndex: 0, endpointRole: "primary", missingClause: `but its response is missing the "warp" field`},
-		{name: "primary-winner-missing-both", winnerIndex: 0, endpointRole: "primary", missingClause: `but its response is missing the "h" (host) and "warp" fields`},
-		{name: "fallback-winner-missing-h", winnerIndex: 1, endpointRole: "fallback", missingClause: `but its response is missing the "h" (host) field`},
-		{name: "fallback-winner-missing-warp", winnerIndex: 1, endpointRole: "fallback", missingClause: `but its response is missing the "warp" field`},
-		{name: "fallback-winner-missing-both", winnerIndex: 1, endpointRole: "fallback", missingClause: `but its response is missing the "h" (host) and "warp" fields`},
+		{name: "primary-winner-missing-h", winnerIndex: 0, endpointRole: "primary", missingClause: `but its response is missing the "h" (host) field`, response: "ip=203.0.113.7\nwarp=off\n"},
+		{name: "primary-winner-missing-warp", winnerIndex: 0, endpointRole: "primary", missingClause: `but its response is missing the "warp" field`, response: "h={host}\nip=203.0.113.7\n"},
+		{name: "primary-winner-missing-both", winnerIndex: 0, endpointRole: "primary", missingClause: `but its response is missing the "h" (host) and "warp" fields`, response: "ip=203.0.113.7\n"},
+		{name: "fallback-winner-missing-h", winnerIndex: 1, endpointRole: "fallback", missingClause: `but its response is missing the "h" (host) field`, response: "ip=203.0.113.7\nwarp=off\n"},
+		{name: "fallback-winner-missing-warp", winnerIndex: 1, endpointRole: "fallback", missingClause: `but its response is missing the "warp" field`, response: "h={host}\nip=203.0.113.7\n"},
+		{name: "fallback-winner-missing-both", winnerIndex: 1, endpointRole: "fallback", missingClause: `but its response is missing the "h" (host) and "warp" fields`, response: "ip=203.0.113.7\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			for _, verbosity := range []pp.Verbosity{pp.Verbose, pp.Quiet} {
-				capture := captureCloudflareTraceDetectionTranscript(t, tc.name, verbosity)
+				fixture := cloudflareTraceTranscriptFixture{responses: [3]string{}, timeout: false}
+				if tc.winnerIndex > 0 {
+					fixture.responses[0] = "h={host}\nwarp=off\n"
+				}
+				fixture.responses[tc.winnerIndex] = tc.response
+				capture := captureCloudflareTraceDetectionTranscript(t, fixture, verbosity)
 				winnerEndpoint := capture.endpoints[tc.winnerIndex]
 				combinedNotice := fmt.Sprintf(
 					"Cloudflare trace IPv4 detection succeeded via %s endpoint %s, %s; please report this at https://github.com/favonia/cloudflare-ddns/issues/new/choose\n",

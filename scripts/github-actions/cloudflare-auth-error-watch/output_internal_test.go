@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,13 +16,27 @@ import (
 	"testing"
 )
 
+// watchOutputFixture carries subprocess behavior independently of the display name.
+type watchOutputFixture struct {
+	RawLimitedAttempts int32 `json:"rawLimitedAttempts"` // -1 means every attempt is rate limited.
+	SDKLimitedAttempts int32 `json:"sdkLimitedAttempts"`
+	RawFirstIndex      int   `json:"rawFirstIndex"`
+	RawMalformed       bool  `json:"rawMalformed"`
+	TruncateBody       bool  `json:"truncateBody"`
+	FailSDK            bool  `json:"failSdk"`
+}
+
 // TestWatchOutputHelper runs the production runner with local HTTP fixtures in
 // a subprocess. Isolation lets the real SDK use a redirected default transport
 // without changing its construction, retry policy, or error classification.
 func TestWatchOutputHelper(t *testing.T) { //nolint:paralleltest // subprocess owns http.DefaultTransport
-	scenario := os.Getenv("AUTH_WATCH_FIXTURE")
-	if scenario == "" {
+	encodedFixture := os.Getenv("AUTH_WATCH_FIXTURE")
+	if encodedFixture == "" {
 		return
+	}
+	var fixture watchOutputFixture
+	if err := json.Unmarshal([]byte(encodedFixture), &fixture); err != nil {
+		t.Fatal(err)
 	}
 	var rawCalls atomic.Int32
 	var sdkCalls atomic.Int32
@@ -46,23 +61,21 @@ func TestWatchOutputHelper(t *testing.T) { //nolint:paralleltest // subprocess o
 		}
 		if path == "/raw/0" {
 			attempt := rawCalls.Add(1)
-			if serveMalformedFixture(writer, scenario) {
+			if serveMalformedFixture(writer, fixture) {
 				return
 			}
-			if scenario == "raw-limited" || (scenario == "recovered" && attempt == 1) {
+			if fixture.RawLimitedAttempts < 0 || attempt <= fixture.RawLimitedAttempts {
 				writer.Header().Set("Retry-After", "0")
 				writer.WriteHeader(http.StatusTooManyRequests)
 				_, _ = fmt.Fprint(writer,
 					`{"success":false,"errors":[{"code":10502,"message":"Too many authentication failures"}]}`)
 				return
 			}
-			if scenario == "mixed" {
-				index = 2
-			}
+			index = fixture.RawFirstIndex
 		}
 		if path == "/zones" {
 			attempt := sdkCalls.Add(1)
-			if scenario == "mixed" || (scenario == "sdk-recovered" && attempt == 1) {
+			if fixture.SDKLimitedAttempts < 0 || attempt <= fixture.SDKLimitedAttempts {
 				writer.WriteHeader(http.StatusTooManyRequests)
 				return
 			}
@@ -92,7 +105,7 @@ func TestWatchOutputHelper(t *testing.T) { //nolint:paralleltest // subprocess o
 		t.Fatal(err)
 	}
 	http.DefaultTransport = fixtureTransport{
-		target: target, base: http.DefaultTransport, failSDK: scenario == "sdk-network",
+		target: target, base: http.DefaultTransport, failSDK: fixture.FailSDK,
 	}
 	cfg := defaultConfig()
 	cfg.PauseBetweenRuns = "0s"
@@ -115,11 +128,11 @@ func TestWatchOutputHelper(t *testing.T) { //nolint:paralleltest // subprocess o
 }
 
 // serveMalformedFixture supplies complete versus truncated non-JSON responses.
-func serveMalformedFixture(writer http.ResponseWriter, scenario string) bool {
-	if scenario != "raw-malformed" && scenario != "raw-body-failure" {
+func serveMalformedFixture(writer http.ResponseWriter, fixture watchOutputFixture) bool {
+	if !fixture.RawMalformed {
 		return false
 	}
-	if scenario == "raw-body-failure" {
+	if fixture.TruncateBody {
 		writer.Header().Set("Content-Length", "100")
 	}
 	writer.WriteHeader(http.StatusForbidden)
@@ -154,18 +167,78 @@ func TestWatchOutput(t *testing.T) {
 	t.Run("scenarios", func(t *testing.T) {
 		t.Parallel()
 		for index, testCase := range []struct {
-			name    string
-			success bool
+			name             string
+			success          bool
+			fixture          watchOutputFixture
+			wantMixedFailure bool
 		}{
-			{"all-match", true}, {"recovered", true}, {"sdk-recovered", true}, {"raw-limited", false}, {"mixed", false},
-			{"raw-malformed", false}, {"raw-body-failure", false}, {"sdk-network", false},
+			{
+				name:    "all-match",
+				success: true,
+				//nolint:exhaustruct_v5 // Omitted fields preserve matching responses.
+				fixture:          watchOutputFixture{},
+				wantMixedFailure: false,
+			},
+			{
+				name:    "recovered",
+				success: true,
+				//nolint:exhaustruct_v5 // Omitted fields preserve matching responses.
+				fixture:          watchOutputFixture{RawLimitedAttempts: 1},
+				wantMixedFailure: false,
+			},
+			{
+				name:    "sdk-recovered",
+				success: true,
+				//nolint:exhaustruct_v5 // Omitted fields preserve matching responses.
+				fixture:          watchOutputFixture{SDKLimitedAttempts: 1},
+				wantMixedFailure: false,
+			},
+			{
+				name:    "raw-limited",
+				success: false,
+				//nolint:exhaustruct_v5 // Omitted fields preserve matching responses.
+				fixture:          watchOutputFixture{RawLimitedAttempts: -1},
+				wantMixedFailure: false,
+			},
+			{
+				name:    "mixed",
+				success: false,
+				//nolint:exhaustruct_v5 // Omitted fields preserve matching responses.
+				fixture:          watchOutputFixture{SDKLimitedAttempts: -1, RawFirstIndex: 2},
+				wantMixedFailure: true,
+			},
+			{
+				name:    "raw-malformed",
+				success: false,
+				//nolint:exhaustruct_v5 // Omitted fields preserve matching responses.
+				fixture:          watchOutputFixture{RawMalformed: true},
+				wantMixedFailure: false,
+			},
+			{
+				name:    "raw-body-failure",
+				success: false,
+				//nolint:exhaustruct_v5 // Omitted fields preserve matching responses.
+				fixture:          watchOutputFixture{RawMalformed: true, TruncateBody: true},
+				wantMixedFailure: false,
+			},
+			{
+				name:    "sdk-network",
+				success: false,
+				//nolint:exhaustruct_v5 // Omitted fields preserve matching responses.
+				fixture:          watchOutputFixture{FailSDK: true},
+				wantMixedFailure: false,
+			},
 		} {
 			t.Run(testCase.name, func(t *testing.T) {
 				t.Parallel()
+				fixtureJSON, marshalErr := json.Marshal(testCase.fixture)
+				if marshalErr != nil {
+					t.Fatal(marshalErr)
+				}
 				summaryPath := filepath.Join(t.TempDir(), "summary")
 				//nolint:gosec // runs this test binary with a fixed helper selector
 				cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestWatchOutputHelper$")
-				cmd.Env = append(os.Environ(), "AUTH_WATCH_FIXTURE="+testCase.name, "GITHUB_STEP_SUMMARY="+summaryPath)
+				cmd.Env = append(os.Environ(), "AUTH_WATCH_FIXTURE="+string(fixtureJSON), "GITHUB_STEP_SUMMARY="+summaryPath)
 				var stdout, stderr bytes.Buffer
 				cmd.Stdout, cmd.Stderr = &stdout, &stderr
 				err := cmd.Run()
@@ -182,7 +255,7 @@ func TestWatchOutput(t *testing.T) {
 				if strings.Contains(stderr.String()+string(summary), "API behavior drifted") {
 					t.Fatal("aggregate failure overclaims authentication drift")
 				}
-				if testCase.name == "mixed" && (!strings.Contains(string(summary), "Expected:") ||
+				if testCase.wantMixedFailure && (!strings.Contains(string(summary), "Expected:") ||
 					strings.Count(string(summary), "cloudflare\\-go zones invalid token") != 2) {
 					t.Fatal("mixed mismatch and SDK failure not retained")
 				}
