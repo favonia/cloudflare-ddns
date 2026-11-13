@@ -57,17 +57,16 @@ func initConfig(ppfmt pp.PP, hb heartbeat.Heartbeat, nt notifier.Notifier) (*con
 	}
 
 	// Get the setter.
-	s := setter.New(ppfmt, h)
+	s := setter.New(h)
 
 	return builtConfig, s, true
 }
 
 // stopUpdating returns final cleanup evidence, or nil when cleanup is disabled.
-// It logs the cleanup heartbeat; the caller owns lifecycle notification composition.
+// The caller owns heartbeat delivery and lifecycle notification composition.
 func stopUpdating(
 	ctx context.Context, ppfmt pp.PP,
 	lifecycleConfig *config.LifecycleConfig, updateConfig *config.UpdateConfig,
-	hb heartbeat.Heartbeat,
 	s setter.Setter,
 ) *updater.Message {
 	if lifecycleConfig.DeleteOnStop {
@@ -75,7 +74,6 @@ func stopUpdating(
 		// outcome: there is no further fallback, and waiting risks exhausting
 		// the container stop grace period. See the lifecycle design note.
 		msg := updater.FinalDeleteIPs(ctx, ppfmt, updateConfig, s, api.CleanupAllowAsync)
-		hb.Log(ctx, ppfmt, msg.HeartbeatMessage)
 		return &msg
 	}
 	return nil
@@ -237,7 +235,10 @@ func runScheduled(workCtx, reportCtx context.Context, ppfmt pp.PP,
 				"No scheduled updates in the near future; consider changing UPDATE_CRON=%s",
 				cron.DescribeSchedule(lifecycleConfig.UpdateCron),
 			)
-			cleanup := stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, hb, s)
+			cleanup := stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, s)
+			if cleanup != nil {
+				hb.Log(ctx, ppfmt, cleanup.HeartbeatMessage)
+			}
 			hb.Ping(ctx, ppfmt, heartbeat.NewMessagef(false, "No scheduled updates"))
 			lifecycle := updater.LifecycleContext{
 				Kind: updater.LifecycleSchedulingFailure, Schedule: cron.DescribeSchedule(lifecycleConfig.UpdateCron),
@@ -253,7 +254,10 @@ func runScheduled(workCtx, reportCtx context.Context, ppfmt pp.PP,
 	signaled:
 		// Wait for the next signal or the alarm, whichever comes first
 		if sig.WaitForSignalsUntil(ppfmt, next) {
-			cleanup := stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, hb, s)
+			cleanup := stopUpdating(ctx, ppfmt, lifecycleConfig, updateConfig, s)
+			if cleanup != nil {
+				hb.Log(ctx, ppfmt, cleanup.HeartbeatMessage)
+			}
 			hb.Exit(ctx, ppfmt, "Stopped")
 			lifecycle := updater.LifecycleContext{Kind: updater.LifecycleShutdown, Schedule: ""}
 			submitNotification(ctx, ppfmt, nt, state, updater.Compose(assessCleanup(state, cleanup), lifecycle))

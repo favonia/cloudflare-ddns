@@ -44,8 +44,10 @@ func TestOperationSuccess(t *testing.T) {
 			if mode == "cleanup" && tc.response == setter.ResponseUpdating {
 				continue // CleanupWait does not return an in-progress result.
 			}
-			if mode == "stop" && (tc.cancelInWork || tc.cancelOnReport) {
-				continue // Scheduled cleanup uses a fresh, uncanceled shutdown context.
+			if mode == "stop" && (tc.cancelInWork || tc.cancelOnReport || !tc.reporterOK) {
+				// Cleanup execution has no reporter dependency; scheduled reporting is
+				// exercised through the shared lifecycle loop instead.
+				continue
 			}
 			t.Run(mode+"/"+tc.name, func(t *testing.T) {
 				t.Parallel()
@@ -103,9 +105,7 @@ func TestOperationSuccess(t *testing.T) {
 					require.Equal(t, tc.want, msg.OK)
 					return tc.reporterOK
 				}
-				if mode == "stop" {
-					hb.EXPECT().Log(reportCtx, ppfmt, gomock.Any()).DoAndReturn(report)
-				} else {
+				if mode != "stop" {
 					hb.EXPECT().Ping(reportCtx, ppfmt, gomock.Any()).DoAndReturn(report)
 				}
 				if mode != "stop" && tc.response != setter.ResponseNoop {
@@ -122,7 +122,7 @@ func TestOperationSuccess(t *testing.T) {
 				case "cleanup":
 					ok = runOnceCleanup(workCtx, reportCtx, ppfmt, cfg, hb, nt, s)
 				case "stop":
-					msg := stopUpdating(reportCtx, ppfmt, &config.LifecycleConfig{UpdateCron: nil, UpdateOnStart: false, DeleteOnStop: true}, cfg, hb, s)
+					msg := stopUpdating(reportCtx, ppfmt, &config.LifecycleConfig{UpdateCron: nil, UpdateOnStart: false, DeleteOnStop: true}, cfg, s)
 					ok = msg == nil || !msg.Failed()
 				}
 				require.Equal(t, tc.want, ok)

@@ -28,7 +28,7 @@ One operation round contributes at most one notification envelope, combining rel
 
 Choose a primary notification kind without losing constituent failures. An associated update or cleanup failure takes its operation-failure kind rather than a successful lifecycle kind; an initial update failure is not a configuration/startup failure. Successful startup and shutdown envelopes use their lifecycle kinds. Scheduling failure takes priority on its exit path, with any cleanup failure retained explicitly. Ordinary operation kinds remain unchanged. An envelope containing only first-known context or unexplained observations uses a state-observation kind that does not imply a mutation.
 
-Keep work, waiting, cancellation, heartbeat, and exit-status contracts in the [Lifecycle Model](lifecycle-model.markdown) independent of notification grouping. Notification delivery does not determine work success.
+Keep work, waiting, cancellation, heartbeat, and exit-status contracts in the [Lifecycle Model](lifecycle-model.markdown) independent of notification grouping. Work success comes from reconciliation results and failures in detection, filtering, derivation, or target preparation; heartbeat and notification messages are projections of that evidence. Reporting content and delivery do not determine work success.
 
 ## First-Known Address Coverage
 

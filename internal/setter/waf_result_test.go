@@ -49,7 +49,7 @@ func TestWAFResultPreservesBatchBoundariesAndOwnedEvidence(t *testing.T) {
 				create.ReturnedItems = returnedItems
 			}
 			p := pp.NewSilent()
-			s := setter.New(p, h.mockHandle)
+			s := setter.New(h.mockHandle)
 			readCall := h.mockHandle.EXPECT().ListWAFListItems(ctx, p, list, "description", "managed").Return(input, true, true, true)
 			createCall := h.mockHandle.EXPECT().CreateWAFListItems(ctx, p, list, "description", createItems).
 				DoAndReturn(func(context.Context, pp.PP, api.WAFList, string, []api.WAFListCreateItem) api.WAFBatchResult {
@@ -107,7 +107,7 @@ func TestWAFResultReadKnowledge(t *testing.T) {
 			t.Parallel()
 			ctx, h := newSetterHarness(t)
 			p := pp.NewSilent()
-			s := setter.New(p, h.mockHandle)
+			s := setter.New(h.mockHandle)
 			list := api.WAFList{AccountID: "account", Name: "list"}
 			h.mockHandle.EXPECT().ListWAFListItems(ctx, p, list, "", "").Return(nil, tc.exists, tc.cached, tc.ok)
 			result := s.SetWAFList(ctx, p, list, "", map[ipnet.Family]setter.WAFTargets{
@@ -129,7 +129,7 @@ func TestFinalWAFResultOwnsCleanupEvidence(t *testing.T) {
 	t.Parallel()
 	ctx, h := newSetterHarness(t)
 	p := pp.NewSilent()
-	s := setter.New(p, h.mockHandle)
+	s := setter.New(h.mockHandle)
 	list := api.WAFList{AccountID: "account", Name: "list"}
 	item := api.WAFListItem{ID: "old", Prefix: netip.MustParsePrefix("192.0.2.0/24"), Comment: "managed"}
 	input := []api.WAFListItem{item}
@@ -165,7 +165,7 @@ func TestWAFResultEmptyDeleteBatch(t *testing.T) {
 			t.Parallel()
 			ctx, h := newSetterHarness(t)
 			p := pp.NewSilent()
-			s := setter.New(p, h.mockHandle)
+			s := setter.New(h.mockHandle)
 			list := api.WAFList{AccountID: "account", Name: "list"}
 			target := netip.MustParsePrefix("192.0.2.1/32")
 			read := h.mockHandle.EXPECT().ListWAFListItems(ctx, p, list, "", "").Return(nil, false, false, true)

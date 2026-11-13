@@ -5,15 +5,19 @@ import (
 	"net/netip"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/favonia/cloudflare-ddns/internal/api"
 	"github.com/favonia/cloudflare-ddns/internal/config"
+	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
+	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/mocks"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
+	"github.com/favonia/cloudflare-ddns/internal/provider"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
@@ -251,5 +255,97 @@ func assertNotificationProgressFacts(t *testing.T, scenario string, notification
 	}
 	if scenario == "duplicate-address-deletion-progress" {
 		require.Equal(t, 3, strings.Count(text, "192.0.2.1 (1 record)"), "three distinct record removals retain distinct outcomes")
+	}
+}
+
+// Cancellation stops ordinary work, but cleanup and its terminal reports use the
+// surviving reporting context. The capture harness makes all reporters fail.
+func TestInterruptedCleanupReportingPreservesWorkResult(t *testing.T) {
+	t.Parallel()
+	for _, failed := range []bool{false, true} {
+		code, mutation, kind, exit := setter.ResponseUpdated, api.MutationCompleted, notifier.KindShutdown, 0
+		if failed {
+			code, mutation, kind, exit = setter.ResponseFailed, api.MutationUnconfirmed, notifier.KindCleanupFailure, 1
+		}
+		var scenario notificationScenario
+		scenario.name = "interrupted-cleanup"
+		scenario.rounds = []notificationRound{{waf: nil, results: []setter.DNSResult{{Code: setter.ResponseFailed, Before: nil, Progress: nil, Effects: nil}}, targets: "", targets6: "", unavailable: nil, cancel: true}}
+		scenario.cleanup = true
+		scenario.cleanupResults = []setter.DNSResult{notificationResult(code, notificationSnapshot("192.0.2.1"), api.RecordDelete, mutation, "192.0.2.1")}
+		capture := renderNotificationScenario(t, scenario, pp.Quiet)
+		var channels []string
+		var kinds []notifier.Kind
+		for _, event := range capture.Events {
+			if event.Channel != "cli" {
+				channels = append(channels, event.Channel)
+			}
+			if event.Channel == "notifier" {
+				kinds = append(kinds, event.Kind)
+			}
+		}
+		require.Equal(t, []string{"heartbeat-start", "heartbeat-ping", "notifier", "heartbeat-log", "heartbeat-exit", "notifier"}, channels)
+		require.Equal(t, []notifier.Kind{notifier.KindUpdateFailure, kind}, kinds)
+		require.Equal(t, exit, capture.Exit)
+	}
+}
+
+// Cleanup status and content must survive the move to caller-owned reporting.
+// Delivery failures cannot turn successful cleanup into a failed exit.
+func TestScheduledCleanupHeartbeatResult(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		code setter.ResponseCode
+		ok   bool
+		text string
+	}{
+		{name: "completed", code: setter.ResponseUpdated, ok: true, text: "Cleaned WAF list(s) account/list"},
+		{name: "accepted", code: setter.ResponseUpdating, ok: true, text: "Cleaning WAF list(s) account/list"},
+		{name: "failed", code: setter.ResponseFailed, ok: false, text: "Could not confirm cleanup of WAF list(s) account/list"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			hb := mocks.NewMockHeartbeat(ctrl)
+			nt := mocks.NewMockNotifier(ctrl)
+			s := mocks.NewMockSetter(ctrl)
+			ppfmt := pp.NewSilent()
+			workCtx, cancel := context.WithCancel(t.Context())
+			cancel()
+			reportCtx := t.Context()
+			schedule := &notificationSchedule{round: 0, zero: false, beforeWork: false}
+			list := api.WAFList{AccountID: "account", Name: "list"}
+			var cfg config.UpdateConfig
+			cfg.Provider = map[ipnet.Family]provider.Provider{ipnet.IP4: provider.NewStaticEmpty()}
+			cfg.WAFLists = []api.WAFList{list}
+			cfg.UpdateTimeout = time.Second
+			cleanup := notificationWAFCleanup(tc.code, false)
+			gomock.InOrder(
+				nt.EXPECT().Send(reportCtx, ppfmt, gomock.Any()).Return(false),
+				hb.EXPECT().Ping(reportCtx, ppfmt, gomock.Any()).Return(false),
+				s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, "", map[ipnet.Family]bool{ipnet.IP4: true}, api.CleanupAllowAsync).DoAndReturn(
+					func(ctx context.Context, _ pp.PP, _ api.WAFList, _ string, _ map[ipnet.Family]bool, _ api.CleanupMode) setter.WAFResult {
+						require.NoError(t, ctx.Err())
+						return cleanup
+					}),
+				hb.EXPECT().Log(reportCtx, ppfmt, gomock.Any()).DoAndReturn(
+					func(ctx context.Context, _ pp.PP, message heartbeat.Message) bool {
+						require.NoError(t, ctx.Err())
+						require.Equal(t, tc.ok, message.OK)
+						require.Equal(t, tc.text, message.Format())
+						return false
+					}),
+				hb.EXPECT().Exit(reportCtx, ppfmt, "Stopped").Return(false),
+				nt.EXPECT().Send(reportCtx, ppfmt, gomock.Any()).Return(false),
+			)
+			exit := runScheduled(workCtx, reportCtx, ppfmt,
+				&config.LifecycleConfig{UpdateCron: schedule, UpdateOnStart: false, DeleteOnStop: true},
+				&cfg, hb, nt, s, notificationWaiter{schedule: schedule, rounds: 1})
+			if tc.ok {
+				require.Zero(t, exit)
+			} else {
+				require.Equal(t, 1, exit)
+			}
+		})
 	}
 }

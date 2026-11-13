@@ -138,7 +138,6 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
-	mockHeartbeat := mocks.NewMockHeartbeat(mockCtrl)
 	mockSetter := mocks.NewMockSetter(mockCtrl)
 	ppfmt := pp.NewSilent()
 
@@ -186,22 +185,13 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 
 	mockSetter.EXPECT().FinalDelete(gomock.Any(), ppfmt, ipnet.IP4, domain4, params).Return(notificationResult(setter.ResponseUpdated, notificationSnapshot("192.0.2.1"), api.RecordDelete, api.MutationCompleted, "192.0.2.1"))
 	mockSetter.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, wafList, "managed list", gomock.Any(), api.CleanupAllowAsync).Return(setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: setter.ResponseUpdated})
-	mockHeartbeat.EXPECT().Log(gomock.Any(), ppfmt, gomock.Any()).DoAndReturn(
-		func(_ context.Context, _ pp.PP, msg heartbeat.Message) bool {
-			require.True(t, msg.OK)
-			require.Contains(t, msg.Format(), "Deleted A records for example.org")
-			require.Contains(t, msg.Format(), "Cleaned WAF list(s) acc/office")
-			return true
-		},
-	)
-	require.False(t, stopUpdating(context.Background(), ppfmt, lifecycleConfig, updateConfig, mockHeartbeat, mockSetter).Failed())
+	require.False(t, stopUpdating(context.Background(), ppfmt, lifecycleConfig, updateConfig, mockSetter).Failed())
 }
 
 func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
-	mockHeartbeat := mocks.NewMockHeartbeat(mockCtrl)
 	mockSetter := mocks.NewMockSetter(mockCtrl)
 
 	require.Nil(t, stopUpdating(
@@ -231,7 +221,6 @@ func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
 			DetectionTimeout:   0,
 			UpdateTimeout:      0,
 		},
-		mockHeartbeat,
 		mockSetter,
 	))
 }

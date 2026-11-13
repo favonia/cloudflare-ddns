@@ -75,13 +75,10 @@ func defensiveWAFRenderingScenarios() []renderingScenario {
 			result.Before = nil
 		}
 		o := wafOutcome{filtered: true, scope: wafScope{ipnet.IP4: true}, list: api.WAFList{AccountID: "account", Name: "list"}, cleanup: result.Cleanup != nil, result: result}
-		responses := emptySetterWAFListResponses()
-		responses.register(o.list.Name, result.Code)
-		message := generateUpdateWAFListsMessage(responses)
-		if o.cleanup {
-			message = generateFinalClearWAFListsMessage(responses)
-		}
+		message := newMessage()
+		message.cleanup = o.cleanup
 		message.waf = []wafOutcome{o}
+		message = message.withHeartbeat()
 		scenarios = append(scenarios, renderingScenario{name: "defensive-waf-" + variant, message: message})
 	}
 	return scenarios

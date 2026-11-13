@@ -25,61 +25,44 @@ func (s setterResponses) register(d domain.Domain, code setter.ResponseCode) {
 }
 
 func generateDetectMessage(ipFamily ipnet.Family, ok bool) Message {
-	switch {
-	default:
+	if ok {
 		return newMessage()
-	case !ok:
-		return Message{
-			HeartbeatMessage: heartbeat.Message{
-				OK:    false,
-				Lines: []string{fmt.Sprintf("Failed to detect any %s addresses", ipFamily.Describe())},
-			},
-			dns:      nil,
-			waf:      nil,
-			problems: []operationProblem{{kind: problemDetection, family: ipFamily, domains: nil}},
-			cleanup:  false,
-		}
 	}
+	return problemMessage(operationProblem{kind: problemDetection, family: ipFamily, domains: nil})
 }
 
 func generateFilterAbortDetectMessage(ipFamily ipnet.Family) Message {
-	summary := fmt.Sprintf("No detected %s addresses remain after filtering", ipFamily.Describe())
-	return Message{
-		HeartbeatMessage: heartbeat.Message{
-			OK:    false,
-			Lines: []string{summary},
-		},
-		dns:      nil,
-		waf:      nil,
-		problems: []operationProblem{{kind: problemFiltering, family: ipFamily, domains: nil}},
-		cleanup:  false,
-	}
+	return problemMessage(operationProblem{kind: problemFiltering, family: ipFamily, domains: nil})
 }
 
 func generateIP6DerivationFailureMessage(domains []domain.Domain) Message {
-	message := "No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"
-	return Message{
-		HeartbeatMessage: heartbeat.Message{
-			OK:    false,
-			Lines: []string{message},
-		},
-		dns:      nil,
-		waf:      nil,
-		problems: []operationProblem{{kind: problemDerivation, family: ipnet.IP6, domains: slices.Clone(domains)}},
-		cleanup:  false,
-	}
+	return problemMessage(operationProblem{kind: problemDerivation, family: ipnet.IP6, domains: slices.Clone(domains)})
 }
 
 func generateMissingTargetSetsMessage(ipFamily ipnet.Family, domains []domain.Domain) Message {
-	domainDescription := pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, domains, "(none)")
-	summary := fmt.Sprintf("Could not update %s records for %s", ipFamily.RecordType(), domainDescription)
-	return Message{
-		HeartbeatMessage: heartbeat.Message{OK: false, Lines: []string{summary}},
-		dns:              nil,
-		waf:              nil,
-		problems:         []operationProblem{{kind: problemMissingTarget, family: ipFamily, domains: slices.Clone(domains)}},
-		cleanup:          false,
+	return problemMessage(operationProblem{kind: problemMissingTarget, family: ipFamily, domains: slices.Clone(domains)})
+}
+
+func problemMessage(problem operationProblem) Message {
+	message := newMessage()
+	message.problems = []operationProblem{problem}
+	return message.withHeartbeat()
+}
+
+func renderProblemHeartbeat(problem operationProblem) heartbeat.Message {
+	var line string
+	switch problem.kind {
+	case problemDetection:
+		line = fmt.Sprintf("Failed to detect any %s addresses", problem.family.Describe())
+	case problemFiltering:
+		line = fmt.Sprintf("No detected %s addresses remain after filtering", problem.family.Describe())
+	case problemDerivation:
+		line = "No AAAA records were changed because a hostid6 setting is incompatible with the detected IPv6 prefixes"
+	case problemMissingTarget:
+		line = fmt.Sprintf("Could not update %s records for %s", problem.family.RecordType(),
+			pp.EnglishJoinMapOrEmptyLabel(domain.Domain.Describe, problem.domains, "(none)"))
 	}
+	return heartbeat.Message{OK: false, Lines: []string{line}}
 }
 
 func describeIPs(ips []netip.Addr) string {
@@ -140,26 +123,6 @@ func generateUpdateHeartbeatMessage(ipFamily ipnet.Family, ips []netip.Addr, s s
 	return heartbeat.Message{OK: true, Lines: successLines}
 }
 
-func generateClearOrUpdateMessage(ipFamily ipnet.Family, ips []netip.Addr, s setterResponses) Message {
-	if isTargetSetEmpty(ips) {
-		return Message{
-			HeartbeatMessage: generateClearHeartbeatMessage(ipFamily, s),
-			dns:              nil,
-			waf:              nil,
-			problems:         nil,
-			cleanup:          false,
-		}
-	} else {
-		return Message{
-			HeartbeatMessage: generateUpdateHeartbeatMessage(ipFamily, ips, s),
-			dns:              nil,
-			waf:              nil,
-			problems:         nil,
-			cleanup:          false,
-		}
-	}
-}
-
 func generateFinalDeleteHeartbeatMessage(ipFamily ipnet.Family, s setterResponses) heartbeat.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return heartbeat.Message{
@@ -181,14 +144,4 @@ func generateFinalDeleteHeartbeatMessage(ipFamily ipnet.Family, s setterResponse
 	}
 
 	return heartbeat.Message{OK: true, Lines: successLines}
-}
-
-func generateFinalDeleteMessage(ipFamily ipnet.Family, s setterResponses) Message {
-	return Message{
-		HeartbeatMessage: generateFinalDeleteHeartbeatMessage(ipFamily, s),
-		dns:              nil,
-		waf:              nil,
-		problems:         nil,
-		cleanup:          true,
-	}
 }

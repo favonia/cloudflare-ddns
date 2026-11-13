@@ -44,16 +44,6 @@ func generateUpdateWAFListsHeartbeatMessage(s setterWAFListResponses) heartbeat.
 	return heartbeat.Message{OK: true, Lines: successLines}
 }
 
-func generateUpdateWAFListsMessage(s setterWAFListResponses) Message {
-	return Message{
-		HeartbeatMessage: generateUpdateWAFListsHeartbeatMessage(s),
-		dns:              nil,
-		waf:              nil,
-		problems:         nil,
-		cleanup:          false,
-	}
-}
-
 func generateFinalClearWAFListsHeartbeatMessage(s setterWAFListResponses) heartbeat.Message {
 	if domains := s[setter.ResponseFailed]; len(domains) > 0 {
 		return heartbeat.Message{
@@ -75,14 +65,4 @@ func generateFinalClearWAFListsHeartbeatMessage(s setterWAFListResponses) heartb
 	}
 
 	return heartbeat.Message{OK: true, Lines: successLines}
-}
-
-func generateFinalClearWAFListsMessage(s setterWAFListResponses) Message {
-	return Message{
-		HeartbeatMessage: generateFinalClearWAFListsHeartbeatMessage(s),
-		dns:              nil,
-		waf:              nil,
-		problems:         nil,
-		cleanup:          true,
-	}
 }

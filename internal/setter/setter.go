@@ -53,7 +53,7 @@ func (w ambiguityWarnings) warnDuplicateCanonicalTags(ppfmt pp.PP, unit string) 
 }
 
 // New creates a new Setter against one handle-bound ownership scope.
-func New(_ppfmt pp.PP, handle api.Handle) Setter {
+func New(handle api.Handle) Setter {
 	return setter{Handle: handle}
 }
 

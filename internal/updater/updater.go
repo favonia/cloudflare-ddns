@@ -187,9 +187,11 @@ func finalizeDetectedRawData(
 
 var errTimeout = errors.New("timeout")
 
+// wrapUpdateWithTimeout runs one reconciliation under its deadline and reports
+// timeout guidance from the returned work code. The caller retains its full result.
 func wrapUpdateWithTimeout(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig,
 	f func(context.Context) setter.ResponseCode,
-) setter.ResponseCode {
+) {
 	ctx, cancel := context.WithTimeoutCause(ctx, c.UpdateTimeout, errTimeout)
 	defer cancel()
 
@@ -202,18 +204,12 @@ func wrapUpdateWithTimeout(ctx context.Context, ppfmt pp.PP, c *config.UpdateCon
 			)
 		}
 	}
-	return resp
 }
 
 // setIPs extracts relevant settings from the configuration and calls [setter.Setter.SetIPs] with timeout.
 func setIPs(ctx context.Context, ppfmt pp.PP,
 	c *config.UpdateConfig, s setter.Setter, ipFamily ipnet.Family, targets map[domain.Domain][]netip.Addr,
 ) Message {
-	type targetGroup struct {
-		ips   []netip.Addr
-		resps setterResponses
-	}
-	var groups []targetGroup
 	var missingDomains []domain.Domain
 	var outcomes []dnsOutcome
 
@@ -249,27 +245,14 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 			scope:    dnsScope{domain: configuredDomain, family: ipFamily},
 			cleanup:  false, target: ips, result: result,
 		}.clone())
-
-		groupIndex := slices.IndexFunc(groups, func(group targetGroup) bool {
-			return slices.Equal(group.ips, ips)
-		})
-		if groupIndex < 0 {
-			groups = append(groups, targetGroup{ips: ips, resps: emptySetterResponses()})
-			groupIndex = len(groups) - 1
-		}
-		groups[groupIndex].resps.register(configuredDomain, result.Code)
 	}
 
-	msgs := make([]Message, 0, len(groups)+1)
+	msg := newMessage()
 	if len(missingDomains) > 0 {
-		msgs = append(msgs, generateMissingTargetSetsMessage(ipFamily, missingDomains))
+		msg.problems = []operationProblem{{kind: problemMissingTarget, family: ipFamily, domains: missingDomains}}
 	}
-	for _, group := range groups {
-		msgs = append(msgs, generateClearOrUpdateMessage(ipFamily, group.ips, group.resps))
-	}
-	msg := mergeMessages(msgs...)
 	msg.dns = outcomes
-	return msg
+	return msg.withHeartbeat()
 }
 
 func reportHostID6Problems(ppfmt pp.PP, problems []hostID6ProblemGroup, hasWAFLists bool) {
@@ -319,7 +302,6 @@ func reportHostID6Problems(ppfmt pp.PP, problems []hostID6ProblemGroup, hasWAFLi
 func finalDeleteIP(
 	ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter, ipFamily ipnet.Family,
 ) Message {
-	resps := emptySetterResponses()
 	outcomes := make([]dnsOutcome, 0, len(c.Domains[ipFamily]))
 
 	for _, domain := range c.Domains[ipFamily] {
@@ -341,24 +323,23 @@ func finalDeleteIP(
 			scope:    dnsScope{domain: domain, family: ipFamily},
 			cleanup:  true, target: nil, result: result,
 		}.clone())
-		resps.register(domain, result.Code)
 	}
 
-	msg := generateFinalDeleteMessage(ipFamily, resps)
+	msg := newMessage()
+	msg.cleanup = true
 	msg.dns = outcomes
-	return msg
+	return msg.withHeartbeat()
 }
 
 // setWAFList extracts relevant settings from the configuration and calls [setter.Setter.SetWAFList] with timeout.
 func setWAFLists(ctx context.Context, ppfmt pp.PP,
 	c *config.UpdateConfig, s setter.Setter, targets map[ipnet.Family]setter.WAFTargets,
 ) Message {
-	resps := emptySetterWAFListResponses()
 	outcomes := make([]wafOutcome, 0, len(c.WAFLists))
 
 	for _, l := range c.WAFLists {
 		var result setter.WAFResult
-		code := wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
+		wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
 			result = s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, targets, c.WAFListItemComment)
 			return result.Code
 		})
@@ -367,12 +348,11 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 			outcome.scope[family] = targets[family].Available
 		}
 		outcomes = append(outcomes, outcome.clone())
-		resps.register(l.Describe(), code)
 	}
 
-	msg := generateUpdateWAFListsMessage(resps)
+	msg := newMessage()
 	msg.waf = outcomes
-	return msg
+	return msg.withHeartbeat()
 }
 
 // finalClearWAFLists extracts relevant settings from the configuration
@@ -380,7 +360,6 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s setter.Setter,
 	mode api.CleanupMode,
 ) Message {
-	resps := emptySetterWAFListResponses()
 	outcomes := make([]wafOutcome, 0, len(c.WAFLists))
 	managedFamilies := map[ipnet.Family]bool{}
 	for ipFamily, p := range ipnet.Bindings(c.Provider) {
@@ -391,7 +370,7 @@ func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig
 
 	for _, l := range c.WAFLists {
 		var result setter.WAFResult
-		code := wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
+		wrapUpdateWithTimeout(ctx, ppfmt, c, func(ctx context.Context) setter.ResponseCode {
 			result = s.FinalClearWAFList(ctx, ppfmt, l, c.WAFListDescription, managedFamilies, mode)
 			return result.Code
 		})
@@ -400,12 +379,12 @@ func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig
 			outcome.scope[family] = true
 		}
 		outcomes = append(outcomes, outcome.clone())
-		resps.register(l.Describe(), code)
 	}
 
-	msg := generateFinalClearWAFListsMessage(resps)
+	msg := newMessage()
+	msg.cleanup = true
 	msg.waf = outcomes
-	return msg
+	return msg.withHeartbeat()
 }
 
 // UpdateIPs detects IP addresses and updates managed DNS records and WAF lists.
@@ -421,7 +400,7 @@ func UpdateIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s sette
 
 			// Note: If we can't detect the new IP address,
 			// it's probably better to leave existing records alone.
-			if msg.HeartbeatMessage.OK {
+			if rawData.Available {
 				targetsForWAF[ipFamily] = deriveWAFTargets(rawData)
 				switch ipFamily {
 				case ipnet.IP4:

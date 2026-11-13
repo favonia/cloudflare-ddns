@@ -66,7 +66,7 @@ func newSetterHarness(t *testing.T) (context.Context, setterHarness) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	mockHandle := mocks.NewMockHandle(mockCtrl)
 
-	s := setter.New(mockPP, mockHandle)
+	s := setter.New(mockHandle)
 
 	return ctx, setterHarness{
 		cancel:     cancel,

@@ -4,11 +4,14 @@ import (
 	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/heartbeat"
+	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
 // Message carries the updater work result and heartbeat status.
 // ReportingState assesses its semantic outcomes for notification composition.
 type Message struct {
+	// HeartbeatMessage is a derived delivery projection. Changing it does not
+	// change the retained work result or notification assessment.
 	HeartbeatMessage heartbeat.Message
 
 	// Semantic entries own their slices and retain encounter order independently
@@ -22,7 +25,20 @@ type Message struct {
 // Failed reports whether updater work had an unrecovered failure.
 // Accepted asynchronous work is not a failure. Reporter delivery is separate.
 func (m Message) Failed() bool {
-	return !m.HeartbeatMessage.OK
+	if len(m.problems) > 0 {
+		return true
+	}
+	for _, outcome := range m.dns {
+		if outcome.result.Code == setter.ResponseFailed {
+			return true
+		}
+	}
+	for _, outcome := range m.waf {
+		if outcome.result.Code == setter.ResponseFailed {
+			return true
+		}
+	}
+	return false
 }
 
 // newMessage creates a new, empty message.
@@ -38,11 +54,9 @@ func newMessage() Message {
 
 // mergeMessages combines multiple compound messages.
 func mergeMessages(msgs ...Message) Message {
-	hms := make([]heartbeat.Message, len(msgs))
 	merged := newMessage()
 
-	for i, msg := range msgs {
-		hms[i] = msg.HeartbeatMessage
+	for _, msg := range msgs {
 		for _, outcome := range msg.dns {
 			merged.dns = append(merged.dns, outcome.clone())
 		}
@@ -56,6 +70,12 @@ func mergeMessages(msgs ...Message) Message {
 		merged.cleanup = merged.cleanup || msg.cleanup
 	}
 
-	merged.HeartbeatMessage = heartbeat.MergeMessages(hms...)
-	return merged
+	return merged.withHeartbeat()
+}
+
+// withHeartbeat derives delivery content from the completed semantic result.
+// Producers call it only after all outcomes and problems have been attached.
+func (m Message) withHeartbeat() Message {
+	m.HeartbeatMessage = renderHeartbeat(m)
+	return m
 }

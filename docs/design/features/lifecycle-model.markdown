@@ -105,6 +105,8 @@ The [Notification Model](notification-model.markdown) owns trigger selection, fi
 
 One-shot mode sends its operation or direct-cleanup result without separate startup/shutdown notices. Scheduling failure remains the primary notice when no future run exists, retaining cleanup outcomes and failures in the same envelope. Grouping must preserve the actual work, cleanup waiting, cancellation, heartbeat calls, and exit status; reporting introduces no additional reads or completion waiting. WAF reporting carries already-admitted contents and reached batch/cleanup evidence through these same paths, distinguishing accepted asynchronous cleanup from confirmed completion without changing the work result.
 
+The composition root owns outbound reporting order. Scheduled cleanup returns its work result; the caller logs that result to the heartbeat service before sending the terminal heartbeat and composed lifecycle notification. Disabled cleanup produces no cleanup log. Execution helpers retain immediate operation diagnostics.
+
 ## Exit Status
 
 Exit status reports the outcome of the work the invocation is responsible for: the update or cleanup in one-shot mode, and final cleanup on normal scheduled-mode shutdown. Success returns 0; an unrecovered failure returns 1. No-op, successful fallback, and accepted asynchronous work under the cleanup waiting policy count as success. Failures in scheduled update rounds do not accumulate into the shutdown result. Startup and scheduling failures return 1.
