@@ -73,7 +73,7 @@ The test applies within each channel. A specific console error may make a consol
 
 Human-reviewed: no.
 
-An ordinary no-op is useful work but usually not a new event. Sending the same “no update needed” inventory every round would make meaningful changes and failures harder to notice. It would also change the notification policy to solve a presentation problem.
+A no-op check is useful work but usually not a new event. Sending the same “no update needed” inventory every round would make meaningful changes and failures harder to notice. It would also change the notification policy to solve a presentation problem.
 
 Startup and first-known observations provide context without requiring perpetual success reminders. First-known means the first usable information included during this process, not a reconstruction of what existed at process startup. A later IPv6 failure should not cause unrelated already-covered IPv4 no-op content to be repeated merely to make a message look complete.
 
@@ -119,7 +119,7 @@ The renderer can lack a complete delta for several different reasons. Treating t
 | No admitted baseline exists | No invented Before or delta; a separately trustworthy current observation may still be useful |
 | A later mutation may have changed an earlier snapshot | Historical rather than current use of that snapshot |
 
-For the parsing case, a candidate `Could not read the returned list contents.` explains something that `Addition completed` does not. It must refer to an actual unusable response, not imply a new read-back attempt. In the ordinary create-before-delete path, that failure stops later deletion, which is not attempted rather than unconfirmed. See [WAF API handling](../../internal/api/cloudflare_waf.go) and [setter sequencing](../../internal/setter/setter.go).
+For the parsing case, a candidate `Could not read the returned list contents.` explains something that `Addition completed` does not. It must refer to an actual unusable response, not imply a new read-back attempt. In WAF update reconciliation’s create-before-delete path, that failure stops later deletion, which is not attempted rather than unconfirmed. See [WAF API handling](../../internal/api/cloudflare_waf.go) and [setter sequencing](../../internal/setter/setter.go).
 
 `could not confirm` and `unconfirmed` express the same uncertainty at different grammatical positions. The former fits a sentence; the latter fits an operation label. Replacing every failure with either phrase would obscure definite local failures and known successful mutations. Plain, specific wording is more accurate when the evidence is stronger.
 

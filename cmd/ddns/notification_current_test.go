@@ -98,7 +98,7 @@ func notificationContentScenario(name string, shape [3]int, cached bool) notific
 	if raw == "" {
 		raw = "empty"
 	}
-	//nolint:exhaustruct_v5 // Scenario options default to ordinary scheduled execution.
+	//nolint:exhaustruct_v5 // Scenario options default to scheduled execution.
 	return notificationScenario{name: name, targets: raw, rounds: []notificationRound{{results: []setter.DNSResult{notificationProgressResult(code, before, satisfied, operations...)}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}}
 }
 
@@ -121,7 +121,7 @@ func notificationCurrentScenarios() []notificationScenario {
 		}
 		//nolint:exhaustruct_v5 // Only the varying evidence and expected lifecycle are relevant.
 		scenarios = append(scenarios, notificationScenario{name: fmt.Sprintf("partial-update-pairs-%d", status), targets: "192.0.2.4,192.0.2.5,192.0.2.6", rounds: []notificationRound{{results: []setter.DNSResult{notificationProgressResult(setter.ResponseFailed, old, nil, operations...)}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}})
-		//nolint:exhaustruct_v5 // Known-empty chronology uses the ordinary scheduled lifecycle.
+		//nolint:exhaustruct_v5 // Known-empty chronology uses the scheduled lifecycle.
 		scenarios = append(scenarios, notificationScenario{name: fmt.Sprintf("known-empty-create-%d", status), rounds: []notificationRound{{results: []setter.DNSResult{notificationProgressResult(setter.ResponseFailed, notificationSnapshot(), nil, notificationOperation(api.RecordCreate, status, "", "192.0.2.1", api.MembershipUnknown))}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}})
 	}
 	//nolint:exhaustruct_v5 // Unknown input and explicit empty target are the only variations.
@@ -522,7 +522,7 @@ func notificationWAFWordingScenarios() []notificationScenario {
 			remove.Result = failed
 		}
 		result := setter.WAFResult{Code: setter.ResponseFailed, Before: &api.WAFSnapshot{Exists: true, Cached: tc.cached, Items: old}, Batches: []setter.WAFBatch{create, remove}, Cleanup: nil}
-		//nolint:exhaustruct_v5 // Ordinary scheduled execution shares identical DNS and WAF targets.
+		//nolint:exhaustruct_v5 // Scheduled execution shares identical DNS and WAF targets.
 		scenarios = append(scenarios, notificationScenario{name: tc.name, targets: strings.Join(addresses, ","), waf: true, rounds: []notificationRound{{results: []setter.DNSResult{notificationNoop(notificationSnapshot(addresses...), addresses...)}, waf: &result}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}})
 	}
 	for _, tc := range []struct {

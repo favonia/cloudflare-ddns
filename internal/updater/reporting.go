@@ -32,7 +32,7 @@ type LifecycleContext struct {
 	schedule string
 }
 
-// NewNoLifecycleContext describes an ordinary round without a service event.
+// NewNoLifecycleContext describes a round without a service event.
 // It is equivalent to the zero value of LifecycleContext.
 func NewNoLifecycleContext() LifecycleContext {
 	return LifecycleContext{kind: lifecycleNone, schedule: ""}
@@ -56,7 +56,7 @@ func NewSchedulingFailureLifecycleContext(schedule string) LifecycleContext {
 }
 
 // ReportOneShot selects and submits one operation's notification through a nonnil
-// notifier, without lifecycle context or cross-round state. Ordinary no-ops
+// notifier, without lifecycle context or cross-round state. No-ops
 // without reportable reached-operation evidence do not call Send. Submission
 // is synchronous; delivery success does not change the supplied work result.
 // The caller retains responsibility for heartbeat delivery and its ordering.
@@ -220,7 +220,7 @@ type dnsRow struct {
 }
 
 // compose purely selects and groups semantic facts from an owned assessment.
-// Startup includes all assessed scopes; ordinary rounds include operation outcomes,
+// Startup includes all assessed scopes; other lifecycle contexts include operation outcomes,
 // problems, uncovered Before context and unexplained fresh observations.
 func compose(a assessment, lifecycle LifecycleContext) envelope {
 	rows := make([]dnsRow, 0, len(a.dns))

@@ -67,7 +67,7 @@ type Setter interface {
 	// FinalDelete removes DNS records of a particular domain.
 	// The returned DNSResult has the same ownership and initial-read distinctions
 	// as SetIPs. Progress retains each deletion's original record identity/address.
-	// Ordinary failures allow later deletions; cancellation after a failed deletion
+	// Deletion failures allow later deletions; cancellation after a failed deletion
 	// leaves the remaining required operations unattempted.
 	FinalDelete(
 		ctx context.Context,

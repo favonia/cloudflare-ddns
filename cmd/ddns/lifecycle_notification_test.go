@@ -105,7 +105,7 @@ func TestFirstInterruptionPrecedesSchedulingFailure(t *testing.T) {
 }
 
 // The matrix explicitly expects one ping per scheduled round, with notification
-// suppression only for the repeated ordinary no-op. Terminal work is a separate
+// suppression only for the repeated no-op. Terminal work is a separate
 // log followed by Exit (or the scheduling-failure ping) and one submission.
 func expectedNotificationChannels(scenario notificationScenario) []string {
 	channels := []string{"heartbeat-start"}
@@ -201,7 +201,7 @@ func TestNotificationProgressEvidenceGuard(t *testing.T) {
 	}
 }
 
-// Cancellation stops ordinary work, but cleanup and its terminal reports use the
+// Cancellation stops update work, but cleanup and its terminal reports use the
 // surviving reporting context. The capture harness makes all reporters fail.
 func TestInterruptedCleanupReportingPreservesWorkResult(t *testing.T) {
 	t.Parallel()

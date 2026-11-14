@@ -95,7 +95,7 @@ WAF refines the shared residual-risk policy with these tiers:
 
 WAF uses the shared reconciliation-intent semantics from [Lifecycle Model](lifecycle-model.markdown).
 
-Ordinary reconciliation may clear managed items from an existing list, but it does not actively delete the whole list.
+Update-round reconciliation may clear managed items from an existing list, but it does not actively delete the whole list.
 
 ## Deletion Eligibility
 

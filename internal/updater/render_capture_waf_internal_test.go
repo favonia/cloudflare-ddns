@@ -13,7 +13,7 @@ import (
 )
 
 // Defensive snapshots exercise the consuming renderer's identity boundaries.
-// They are deliberately outside claims about ordinary setter/service admission.
+// They are deliberately outside claims about production setter reachability or service admission.
 func defensiveWAFRenderingScenarios() []renderingScenario {
 	item := func(id, prefix string) api.WAFListItem {
 		return api.WAFListItem{ID: api.ID(id), Prefix: netip.MustParsePrefix(prefix), Comment: "owned"}

@@ -310,7 +310,7 @@ func notificationScenarios() []notificationScenario {
 		kind    notifier.Kind
 		targets string
 	}{{"noop", notificationNoop(fresh, "192.0.2.2"), notifier.KindStateObservation, "192.0.2.2"}, {"success", notificationResult(setter.ResponseUpdated, fresh, api.RecordUpdate, api.MutationCompleted, "192.0.2.1"), notifier.KindUpdate, ""}, {"failure", failed, notifier.KindUpdateFailure, ""}} {
-		//nolint:exhaustruct_v5 // Each sequence inherits ordinary scheduled defaults.
+		//nolint:exhaustruct_v5 // Each sequence inherits scheduled defaults.
 		scenarios = append(scenarios, notificationScenario{name: "unexplained-observation-then-" + ending.name, assertNotifications: func(t *testing.T, notifications []notificationEvent) {
 			t.Helper()
 			require.Contains(t, notifications[1].Text, "192.0.2.2")
@@ -346,7 +346,7 @@ func notificationProgressScenarios() []notificationScenario {
 	cached.Cached = true
 	cachedEmpty := notificationSnapshot()
 	cachedEmpty.Cached = true
-	//nolint:exhaustruct_v5 // Matrix options default to the ordinary scheduled lifecycle.
+	//nolint:exhaustruct_v5 // Matrix options default to the scheduled lifecycle.
 	return []notificationScenario{
 		{name: "multi-ip-stopped-suffix", assertNotifications: func(t *testing.T, notifications []notificationEvent) {
 			t.Helper()

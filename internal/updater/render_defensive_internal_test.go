@@ -23,7 +23,7 @@ type renderingScenario struct {
 }
 
 // These consumer-contract fixtures do not assert remote duplicate admissibility
-// or ordinary setter reachability for missing/conflicting evidence.
+// or production setter reachability for missing/conflicting evidence.
 func defensiveRenderingScenarios() []renderingScenario {
 	cases := make([]renderingScenario, 0, 6)
 	for _, tc := range []struct {

@@ -162,8 +162,8 @@ func TestRenderUnknownEmptyCleanup(t *testing.T) {
 	require.NotContains(t, text, "Current")
 }
 
-// These are bounded renderer inputs. Ordinary create is visited before delete;
-// nil create, accepted ordinary work, and blocked removal are defensive only.
+// These are bounded renderer inputs. Update reconciliation visits create before delete;
+// nil create, accepted update work, and blocked removal are defensive only.
 func TestRenderWAFOperationGroups(t *testing.T) {
 	t.Parallel()
 	statuses := []struct {

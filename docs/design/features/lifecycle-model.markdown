@@ -17,7 +17,12 @@ This note covers two related timelines:
 - process lifecycle: startup, scheduled waiting, shutdown
 - update-round lifecycle: detection, derivation, reconciliation
 
-The same process may execute many update rounds before one shutdown cleanup.
+There are two execution modes:
+
+- **One-shot** (`UPDATE_CRON=@once`): perform one update or direct cleanup, then exit.
+- **Scheduled** (any other accepted `UPDATE_CRON` value): run updates according to the schedule until shutdown or a scheduling failure, optionally updating at startup.
+
+Update and cleanup describe work, not execution modes: either mode can perform them. A scheduled process may execute many update rounds before shutdown cleanup.
 
 ## Core Model
 
@@ -89,15 +94,13 @@ The shared reconciliation algorithm is owned by [Reconciliation Algorithm](recon
 
 ## Cleanup
 
-Cleanup is shutdown-time mutation after the process has decided to stop.
-
-Cleanup deletes the resources that are eligible for shutdown deletion.
+Cleanup deletes eligible resources when a scheduled process stops or when a one-shot invocation requests direct cleanup.
 
 With `UPDATE_CRON=@once` and `DELETE_ON_STOP=true`, run cleanup directly instead of first reconciling empty targets. Startup validates that every managed IP family uses `static.empty`; families using `none` are outside the cleanup scope.
 
 Deletion eligibility is owned by [Ownership Model](ownership-model.markdown) and instantiated for WAF in [WAF Ownership Instantiation](managed-waf-item-ownership.markdown).
 
-Ordinary shutdown may skip WAF completion polling when the API allows it and the result cannot guide further cleanup. This shortens shutdown and reduces the risk of forced termination after the container stop grace period; accepted work may remain pending. Ordinary WAF updates retain completion waiting. One-shot cleanup instead waits within the configured timeout because confirming completion is its purpose. DNS management writes are synchronous: an unconfirmed result concerns whether the attempted effect completed, not a queued future operation. Public DNS propagation is separate from management completion.
+Scheduled shutdown cleanup may skip WAF completion polling when the API allows it and the result cannot guide further cleanup. This shortens shutdown and reduces the risk of forced termination after the container stop grace period; accepted work may remain pending. WAF updates in both execution modes retain completion waiting. One-shot cleanup instead waits within the configured timeout because confirming completion is its purpose. DNS management writes are synchronous: an unconfirmed result concerns whether the attempted effect completed, not a queued future operation. Public DNS propagation is separate from management completion.
 
 ## Reporting Boundaries
 
@@ -121,7 +124,7 @@ These boundaries should remain explicit:
 - admissibility preflight completes before mutation for the affected IP family
 - derivation changes admissible raw data into resource-specific targets; it does not mutate remote state
 - reconciliation mutates toward the desired steady state for this round
-- cleanup mutates under shutdown authority, not ordinary steady-state authority
+- cleanup mutates under shutdown authority, not update-round reconciliation authority
 
 ## Extension Points
 

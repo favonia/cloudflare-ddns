@@ -24,7 +24,7 @@ func notificationFilteredScenarios() []notificationScenario {
 		if result.Code == setter.ResponseFailed {
 			kind = notifier.KindUpdateFailure
 		}
-		//nolint:exhaustruct_v5 // Capture options default to ordinary scheduled execution.
+		//nolint:exhaustruct_v5 // Capture options default to scheduled execution.
 		scenarios = append(scenarios, notificationScenario{name: name, dnsFiltered: true, targets: target, rounds: []notificationRound{{results: []setter.DNSResult{result}}}, wantKinds: []notifier.Kind{kind, notifier.KindShutdown}})
 	}
 	// Reuse the same evidence builder, independently of baseline display labels.
@@ -213,12 +213,12 @@ func notificationFilteredCleanupScenarios() []notificationScenario {
 	return scenarios
 }
 
-// Reject contradictions in the controlled ordinary-update evidence. This guard
+// Reject contradictions in the controlled update-round evidence. This guard
 // checks the setter's batch obligations, not remote response admissibility or
 // completeness of a hand-built plan. Defensive anomalies use the direct harness.
 func notificationWAFEvidenceProblem(result setter.WAFResult, targets map[ipnet.Family]setter.WAFTargets) string {
 	if result.Cleanup != nil {
-		return "ordinary update carries cleanup evidence"
+		return "update round carries cleanup evidence"
 	}
 	if result.Before == nil {
 		if result.Code != setter.ResponseFailed || len(result.Batches) != 0 {
@@ -263,7 +263,7 @@ func notificationWAFEvidenceProblem(result setter.WAFResult, targets map[ipnet.F
 			return "reached work follows a failed or unvisited batch"
 		}
 		if batch.Result.Status == api.WAFBatchAccepted {
-			return "ordinary setter work cannot be accepted asynchronously"
+			return "update-round mutations must wait for completion"
 		}
 		if batch.Result.OK {
 			if batch.Result.Status != api.WAFBatchCompleted && (batch.Result.Status != api.WAFBatchNoEffect || len(batch.Create)+len(batch.Delete) != 0) {
