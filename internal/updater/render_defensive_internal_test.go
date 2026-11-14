@@ -34,7 +34,7 @@ func defensiveRenderingScenarios() []renderingScenario {
 	}{
 		{name: "other-anchor", configure: func(_ *dnsOutcome) {}, wantKind: notifier.KindUpdateFailure, check: func(t *testing.T, message Message) {
 			t.Helper()
-			text := Compose(NewOneShotReportingState().ObserveRound(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+			text := compose(snapshotAssessment(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).notificationValue().Format()
 			require.Contains(t, text, "(1 other record)")
 			require.Contains(t, text, "192.0.2.1 (cached) →")
 		}},
@@ -44,7 +44,7 @@ func defensiveRenderingScenarios() []renderingScenario {
 			o.result.Progress.Operations = []setter.DNSOperation{o.result.Progress.Operations[1], reportingOperation(api.RecordDelete, setter.DNSOperationCompleted, "updated", "192.0.2.1"), reportingOperation(api.RecordDelete, setter.DNSOperationCompleted, "unvisited", "192.0.2.1")}
 		}, wantKind: notifier.KindCleanupFailure, check: func(t *testing.T, message Message) {
 			t.Helper()
-			text := Compose(NewOneShotReportingState().ObserveRound(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+			text := compose(snapshotAssessment(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).notificationValue().Format()
 			require.NotContains(t, text, "other record")
 			require.Contains(t, text, "(1 record)")
 		}},
@@ -52,7 +52,7 @@ func defensiveRenderingScenarios() []renderingScenario {
 			o.result.Progress.Operations[0].Record.ID = ""
 		}, wantKind: notifier.KindUpdateFailure, check: func(t *testing.T, message Message) {
 			t.Helper()
-			text := Compose(NewOneShotReportingState().ObserveRound(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+			text := compose(snapshotAssessment(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).notificationValue().Format()
 			require.NotContains(t, text, "other record")
 			require.Contains(t, text, "(1 record)")
 		}},
@@ -60,7 +60,7 @@ func defensiveRenderingScenarios() []renderingScenario {
 			o.result.Progress.Operations[1].Record.IP = netip.MustParseAddr("192.0.2.99")
 		}, wantKind: notifier.KindUpdateFailure, check: func(t *testing.T, message Message) {
 			t.Helper()
-			text := Compose(NewOneShotReportingState().ObserveRound(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+			text := compose(snapshotAssessment(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).notificationValue().Format()
 			require.NotContains(t, text, "192.0.2.99 (1")
 			require.NotContains(t, text, "Removal unconfirmed (cached)")
 		}},
@@ -69,7 +69,7 @@ func defensiveRenderingScenarios() []renderingScenario {
 			o.result.Progress.Operations = []setter.DNSOperation{o.result.Progress.Operations[1]}
 		}, wantKind: notifier.KindUpdateFailure, check: func(t *testing.T, message Message) {
 			t.Helper()
-			text := Compose(NewOneShotReportingState().ObserveRound(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+			text := compose(snapshotAssessment(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).notificationValue().Format()
 			require.NotContains(t, text, "other record")
 			require.Contains(t, text, "(1 record)")
 		}},
@@ -78,7 +78,7 @@ func defensiveRenderingScenarios() []renderingScenario {
 			o.result.Progress.Operations = []setter.DNSOperation{o.result.Progress.Operations[1]}
 		}, wantKind: notifier.KindUpdateFailure, check: func(t *testing.T, message Message) {
 			t.Helper()
-			text := Compose(NewOneShotReportingState().ObserveRound(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+			text := compose(snapshotAssessment(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).notificationValue().Format()
 			require.NotContains(t, text, "record)")
 		}},
 		{name: "same-ip-comment-exclusion", configure: func(o *dnsOutcome) {
@@ -89,7 +89,7 @@ func defensiveRenderingScenarios() []renderingScenario {
 			o.result.Progress.Operations = []setter.DNSOperation{excluded, other}
 		}, wantKind: notifier.KindUpdateFailure, check: func(t *testing.T, message Message) {
 			t.Helper()
-			text := Compose(NewOneShotReportingState().ObserveRound(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+			text := compose(snapshotAssessment(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).notificationValue().Format()
 			require.Contains(t, text, "Update confirmed:")
 			require.Contains(t, text, "Addition unconfirmed:")
 			require.Equal(t, 1, strings.Count(text, "excluded from management"))

@@ -91,10 +91,10 @@ func TestDNSDisclosureNeedsEveryOldAddressAndExplicitEmpty(t *testing.T) {
 			row := makeDNSRow(assessedDNS{firstKnown: false, unexplained: false, outcome: o})
 			require.False(t, row.evidence.coveredBy(dnsDisclosure{addresses: nil, knownEmpty: false}))
 			require.True(t, row.evidence.coveredBy(row.disclosure))
-			state := NewScheduledReportingState()
-			envelope := Compose(state.ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+			state := newReportingState()
+			envelope := compose(state.observeRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 			require.Empty(t, state.covered)
-			state.RecordSubmission(envelope)
+			state.recordSubmission(envelope)
 			require.True(t, state.covered[o.scope])
 		})
 	}
@@ -214,7 +214,7 @@ func TestDNSKnownEmptyRetainsMutationChronology(t *testing.T) {
 	}
 }
 
-// Compose owns grouping and per-scope coverage. Equivalent display facts may
+// compose owns grouping and per-scope coverage. Equivalent display facts may
 // group despite different IDs; submission must cover each original scope.
 func TestDNSGroupedSourcesRemainIndependent(t *testing.T) {
 	t.Parallel()
@@ -223,18 +223,18 @@ func TestDNSGroupedSourcesRemainIndependent(t *testing.T) {
 	b.scope.domain = domain.FQDN("b.example")
 	b.result.Before.Records[0].ID = "other"
 	b.result.Progress.Operations[0].Record.ID = "other"
-	state := NewScheduledReportingState()
+	state := newReportingState()
 	context := LifecycleContext{Kind: LifecycleNone, Schedule: ""}
-	envelope := Compose(state.ObserveRound(reportingMessage(a, b)), context)
-	require.Len(t, envelope.Notification().Message, 1)
-	require.Contains(t, envelope.Notification().Format(), "a.example")
-	require.Contains(t, envelope.Notification().Format(), "b.example")
-	state.RecordSubmission(envelope)
+	envelope := compose(state.observeRound(reportingMessage(a, b)), context)
+	require.Len(t, envelope.notificationValue().Message, 1)
+	require.Contains(t, envelope.notificationValue().Format(), "a.example")
+	require.Contains(t, envelope.notificationValue().Format(), "b.example")
+	state.recordSubmission(envelope)
 	for _, outcome := range []dnsOutcome{a, b} {
 		outcome.result.Code = setter.ResponseNoop
 		outcome.result.Before.Cached = true
 		outcome.result.Progress = &setter.DNSProgress{Satisfied: []netip.Addr{outcome.result.Before.Records[0].IP}, Operations: nil}
-		require.True(t, Compose(state.ObserveRound(reportingMessage(outcome)), context).IsEmpty())
+		require.True(t, compose(state.observeRound(reportingMessage(outcome)), context).isEmpty())
 	}
 }
 
@@ -416,13 +416,13 @@ func TestDNSGroupingMixedPartialOperations(t *testing.T) {
 					o.result.Effects = append(o.result.Effects, api.RecordMutation{Kind: op.Kind, Status: status, Record: fact, Membership: op.Membership})
 				}
 			}
-			state := NewScheduledReportingState()
-			envelope := Compose(state.ObserveRound(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+			state := newReportingState()
+			envelope := compose(state.observeRound(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 			wantBlocks := 2
 			if difference == "identity only" {
 				wantBlocks = 1
 			}
-			text := envelope.Notification().Format()
+			text := envelope.notificationValue().Format()
 			require.Equal(t, wantBlocks, strings.Count(text, "IPv4 DNS for "))
 			require.Contains(t, text, "a.example")
 			require.Contains(t, text, "b.example")

@@ -46,7 +46,7 @@ func TestWAFEvidenceOwnsEveryMutableLayer(t *testing.T) {
 			message := newMessage()
 			message.waf = []wafOutcome{input}
 			merged := mergeMessages(message)
-			assessment := NewOneShotReportingState().ObserveRound(message)
+			assessment := snapshotAssessment(message)
 			mutate(&input)
 			require.Equal(t, source, merged.waf[0])
 			require.Equal(t, source, assessment.waf[0])

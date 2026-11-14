@@ -5,7 +5,6 @@ import (
 
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
-	"github.com/favonia/cloudflare-ddns/internal/updater"
 )
 
 func startupFailureNotification() notifier.Notification {
@@ -13,14 +12,12 @@ func startupFailureNotification() notifier.Notification {
 		"Cloudflare DDNS was misconfigured and could not start. Please check the logs for details.")
 }
 
-// submitNotification commits submitted coverage immediately before delivery.
-// Empty envelopes do not reach the transport; delivery does not affect coverage.
-func submitNotification(ctx context.Context, ppfmt pp.PP, nt notifier.Notifier,
-	state *updater.ReportingState, envelope updater.Envelope,
+// sendNotification skips empty one-shot notifications. Delivery does not change
+// the work result; scheduled submission bookkeeping belongs to its reporter.
+func sendNotification(ctx context.Context, ppfmt pp.PP, nt notifier.Notifier,
+	notification notifier.Notification,
 ) {
-	if envelope.IsEmpty() {
-		return
+	if !notification.IsEmpty() {
+		nt.Send(ctx, ppfmt, notification)
 	}
-	state.RecordSubmission(envelope)
-	nt.Send(ctx, ppfmt, envelope.Notification())
 }

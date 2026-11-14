@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"context"
 	"net/netip"
 	"slices"
 	"strings"
@@ -8,13 +9,14 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
+	"github.com/favonia/cloudflare-ddns/internal/pp"
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
 // LifecycleKind identifies context supplied by the composition root.
 type LifecycleKind uint8
 
-// Lifecycle contexts supported by Compose.
+// Lifecycle contexts supported by ScheduledReporter.Report.
 const (
 	LifecycleNone LifecycleKind = iota
 	LifecycleStartup
@@ -29,26 +31,58 @@ type LifecycleContext struct {
 	Schedule string
 }
 
-// ReportingState owns process-local DNS inference and submitted Before coverage
-// under one stable managed ownership scope. Call ObserveRound once per completed round,
-// then Compose and RecordSubmission serially. Delivery success does not affect this state.
-type ReportingState struct {
-	scheduled bool
+// OneShotNotification selects and renders one operation's notification without
+// lifecycle context or cross-round inference and coverage. An ordinary no-op
+// without reportable reached-operation evidence is empty. The returned
+// notification is independently owned; delivery and its outcome remain the
+// caller's responsibility and do not change the work result.
+func OneShotNotification(message Message) notifier.Notification {
+	return compose(snapshotAssessment(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).notificationValue()
+}
+
+// ScheduledReporter owns notification inference, submitted address coverage,
+// and delivery for one scheduled process with a stable managed ownership scope.
+// Construct it with NewScheduledReporter and use Report serially.
+type ScheduledReporter struct {
+	state    *reportingState
+	notifier notifier.Notifier
+}
+
+// NewScheduledReporter binds a nonnil notifier to a fresh scheduled reporting
+// state. The notifier remains responsible for transport and delivery diagnostics.
+func NewScheduledReporter(nt notifier.Notifier) *ScheduledReporter {
+	return &ScheduledReporter{state: newReportingState(), notifier: nt}
+}
+
+// Report handles one completed update or cleanup result and its lifecycle context.
+// Pass nil when no operation took place, such as startup without an update or
+// shutdown without cleanup. Call once per completed result, including silent
+// no-ops: inference advances even when no notification is selected. Nonempty
+// notifications advance coverage immediately before Send, regardless of delivery
+// success. Report is synchronous and does not change the supplied work result.
+func (r *ScheduledReporter) Report(ctx context.Context, ppfmt pp.PP, message *Message, lifecycle LifecycleContext) {
+	a := assessment{dns: nil, waf: nil, problems: nil, cleanup: false}
+	if message != nil {
+		a = r.state.observeRound(*message)
+	}
+	envelope := compose(a, lifecycle)
+	if envelope.isEmpty() {
+		return
+	}
+	r.state.recordSubmission(envelope)
+	r.notifier.Send(ctx, ppfmt, envelope.notificationValue())
+}
+
+// reportingState owns process-local DNS inference and submitted Before coverage.
+// ScheduledReporter owns the observation/submission sequence; pure composition
+// and immutable assessments remain separate internal units.
+type reportingState struct {
 	inference map[dnsScope]*dnsInference
 	covered   map[dnsScope]bool
 }
 
-// NewOneShotReportingState reports operation facts without tracking cross-round
-// inference or first-known address coverage.
-func NewOneShotReportingState() *ReportingState {
-	return &ReportingState{scheduled: false, inference: nil, covered: nil}
-}
-
-// NewScheduledReportingState tracks cross-round inference and first-known
-// address coverage for one scheduled process with a stable managed ownership scope.
-func NewScheduledReportingState() *ReportingState {
-	return &ReportingState{
-		scheduled: true,
+func newReportingState() *reportingState {
+	return &reportingState{
 		inference: make(map[dnsScope]*dnsInference),
 		covered:   make(map[dnsScope]bool),
 	}
@@ -60,22 +94,20 @@ type assessedDNS struct {
 	unexplained bool
 }
 
-// Assessment owns an immutable snapshot of one assessed round and its selection
+// assessment owns an immutable snapshot of one assessed round and its selection
 // context. Recomposition retains this original context even after submission;
 // it does not query later reporting state. Its zero value supports lifecycle-only context.
-type Assessment struct {
+type assessment struct {
 	dns      []assessedDNS
 	waf      []wafOutcome
 	problems []operationProblem
 	cleanup  bool
 }
 
-// ObserveRound returns an owned assessment of a completed update or cleanup round.
-// For scheduled reporting, it advances DNS inference independently of composition
-// or delivery and snapshots missing coverage without consuming it.
-// Call exactly once per completed round.
-func (s *ReportingState) ObserveRound(message Message) Assessment {
-	a := Assessment{
+// snapshotAssessment detaches one round's facts without interpreting history or
+// changing state. One-shot reporting and scheduled observation share this snapshot.
+func snapshotAssessment(message Message) assessment {
+	a := assessment{
 		dns:      make([]assessedDNS, 0, len(message.dns)),
 		waf:      make([]wafOutcome, 0, len(message.waf)),
 		problems: make([]operationProblem, 0, len(message.problems)),
@@ -85,17 +117,7 @@ func (s *ReportingState) ObserveRound(message Message) Assessment {
 		a.waf = append(a.waf, o.clone())
 	}
 	for _, o := range message.dns {
-		entry := assessedDNS{outcome: o.clone(), firstKnown: false, unexplained: false}
-		if s.scheduled {
-			model := s.inference[o.scope]
-			if model == nil {
-				model = &dnsInference{known: false, factors: nil}
-				s.inference[o.scope] = model
-			}
-			entry.unexplained = model.assess(o.result)
-			entry.firstKnown = !s.covered[o.scope] && o.result.Before != nil
-		}
-		a.dns = append(a.dns, entry)
+		a.dns = append(a.dns, assessedDNS{outcome: o.clone(), firstKnown: false, unexplained: false})
 	}
 	for _, p := range message.problems {
 		p.domains = slices.Clone(p.domains)
@@ -104,27 +126,45 @@ func (s *ReportingState) ObserveRound(message Message) Assessment {
 	return a
 }
 
-// Envelope owns the selected, grouped notification and the known Before scopes
+// observeRound advances inference exactly once for each invoked scope and
+// snapshots missing coverage without consuming it.
+func (s *reportingState) observeRound(message Message) assessment {
+	a := snapshotAssessment(message)
+	for i := range a.dns {
+		entry := &a.dns[i]
+		o := entry.outcome
+		model := s.inference[o.scope]
+		if model == nil {
+			model = &dnsInference{known: false, factors: nil}
+			s.inference[o.scope] = model
+		}
+		entry.unexplained = model.assess(o.result)
+		entry.firstKnown = !s.covered[o.scope] && o.result.Before != nil
+	}
+	return a
+}
+
+// envelope owns the selected, grouped notification and the known Before scopes
 // actually rendered in it. Reading or composing an envelope never advances coverage.
-type Envelope struct {
+type envelope struct {
 	notification notifier.Notification
 	beforeScopes []dnsScope
 }
 
-// Notification returns an independently owned message for existing transports.
-func (e Envelope) Notification() notifier.Notification {
+// notificationValue returns an independently owned message for existing transports.
+func (e envelope) notificationValue() notifier.Notification {
 	return notifier.NewNotification(e.notification.Kind, slices.Clone(e.notification.Message))
 }
 
-// IsEmpty reports whether there is any selected notification content.
-func (e Envelope) IsEmpty() bool { return e.notification.IsEmpty() }
+// isEmpty reports whether there is any selected notification content.
+func (e envelope) isEmpty() bool { return e.notification.IsEmpty() }
 
-// RecordSubmission marks the known Before information in a nonempty envelope
-// as covered for scheduled reporting. It has no effect on one-shot reporting.
+// recordSubmission marks the known Before information in a nonempty envelope
+// as covered.
 // The envelope must come from this state and ownership scope. Call immediately
 // before Notifier.Send, irrespective of its eventual return value.
-func (s *ReportingState) RecordSubmission(e Envelope) {
-	if !s.scheduled || e.IsEmpty() {
+func (s *reportingState) recordSubmission(e envelope) {
+	if e.isEmpty() {
 		return
 	}
 	for _, scope := range e.beforeScopes {
@@ -152,10 +192,10 @@ type dnsRow struct {
 	unexplained  bool
 }
 
-// Compose purely selects and groups semantic facts from an owned assessment.
+// compose purely selects and groups semantic facts from an owned assessment.
 // Startup includes all assessed scopes; ordinary rounds include operation outcomes,
 // problems, uncovered Before context and unexplained fresh observations.
-func Compose(a Assessment, lifecycle LifecycleContext) Envelope {
+func compose(a assessment, lifecycle LifecycleContext) envelope {
 	rows := make([]dnsRow, 0, len(a.dns))
 	beforeScopes := make([]dnsScope, 0, len(a.dns))
 	for _, entry := range a.dns {
@@ -208,7 +248,7 @@ func Compose(a Assessment, lifecycle LifecycleContext) Envelope {
 	if len(message) > 0 {
 		message = notifier.Message{strings.Join(message, "\n\n")}
 	}
-	return Envelope{
+	return envelope{
 		notification: notifier.NewNotification(notificationKind(a, lifecycle), message),
 		beforeScopes: beforeScopes,
 	}
@@ -267,7 +307,7 @@ func wafHasOperation(o wafOutcome) bool {
 	return o.result.Code != setter.ResponseNoop || (o.result.Cleanup != nil && len(o.result.Cleanup.Stages) > 0)
 }
 
-func notificationKind(a Assessment, lifecycle LifecycleContext) notifier.Kind {
+func notificationKind(a assessment, lifecycle LifecycleContext) notifier.Kind {
 	if lifecycle.Kind == LifecycleSchedulingFailure {
 		return notifier.KindSchedulingFailure
 	}

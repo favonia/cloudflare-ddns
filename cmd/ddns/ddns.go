@@ -86,14 +86,10 @@ func stopUpdating(
 func runOnceCleanup(workCtx, reportCtx context.Context, ppfmt pp.PP,
 	updateConfig *config.UpdateConfig, hb heartbeat.Heartbeat, nt notifier.Notifier, s setter.Setter,
 ) bool {
-	msg := updater.FinalDeleteIPs(workCtx, ppfmt, updateConfig, s, api.CleanupWait)
-	ok := !msg.Failed()
-	hb.Ping(reportCtx, ppfmt, msg.HeartbeatMessage)
-	state := updater.NewOneShotReportingState()
-	lifecycle := updater.LifecycleContext{Kind: updater.LifecycleNone, Schedule: ""}
-	assessment := state.ObserveRound(msg)
-	submitNotification(reportCtx, ppfmt, nt, state, updater.Compose(assessment, lifecycle))
-	return ok
+	result := updater.FinalDeleteIPs(workCtx, ppfmt, updateConfig, s, api.CleanupWait)
+	hb.Ping(reportCtx, ppfmt, result.HeartbeatMessage)
+	sendNotification(reportCtx, ppfmt, nt, updater.OneShotNotification(result))
+	return !result.Failed()
 }
 
 // runOnceUpdate reports whether the update succeeded, independently of later signals or
@@ -101,14 +97,10 @@ func runOnceCleanup(workCtx, reportCtx context.Context, ppfmt pp.PP,
 func runOnceUpdate(workCtx, reportCtx context.Context, ppfmt pp.PP,
 	updateConfig *config.UpdateConfig, hb heartbeat.Heartbeat, nt notifier.Notifier, s setter.Setter,
 ) bool {
-	msg := updater.UpdateIPs(workCtx, ppfmt, updateConfig, s)
-	ok := !msg.Failed()
-	hb.Ping(reportCtx, ppfmt, msg.HeartbeatMessage)
-	state := updater.NewOneShotReportingState()
-	lifecycle := updater.LifecycleContext{Kind: updater.LifecycleNone, Schedule: ""}
-	assessment := state.ObserveRound(msg)
-	submitNotification(reportCtx, ppfmt, nt, state, updater.Compose(assessment, lifecycle))
-	return ok
+	result := updater.UpdateIPs(workCtx, ppfmt, updateConfig, s)
+	hb.Ping(reportCtx, ppfmt, result.HeartbeatMessage)
+	sendNotification(reportCtx, ppfmt, nt, updater.OneShotNotification(result))
+	return !result.Failed()
 }
 
 func main() {
@@ -191,10 +183,10 @@ func runScheduled(workCtx, reportCtx context.Context, ppfmt pp.PP,
 	hb heartbeat.Heartbeat, nt notifier.Notifier, s setter.Setter, sig signalWaiter,
 ) int {
 	ctx, ctxWithSignals := reportCtx, workCtx
-	state := updater.NewScheduledReportingState()
+	reporter := updater.NewScheduledReporter(nt)
 	if !lifecycleConfig.UpdateOnStart {
 		lifecycle := updater.LifecycleContext{Kind: updater.LifecycleStartup, Schedule: ""}
-		submitNotification(ctx, ppfmt, nt, state, updater.Compose(updater.Assessment{}, lifecycle))
+		reporter.Report(ctx, ppfmt, nil, lifecycle)
 	}
 
 	// Keep scheduled runs from producing an empty log in quiet mode, which
@@ -216,14 +208,13 @@ func runScheduled(workCtx, reportCtx context.Context, ppfmt pp.PP,
 			// Improve readability of the logging by separating each round of checks with blank lines.
 			ppfmt.BlankLineIfVerbose()
 
-			msg := updater.UpdateIPs(ctxWithSignals, ppfmt, updateConfig, s)
-			hb.Ping(ctx, ppfmt, msg.HeartbeatMessage)
+			result := updater.UpdateIPs(ctxWithSignals, ppfmt, updateConfig, s)
+			hb.Ping(ctx, ppfmt, result.HeartbeatMessage)
 			lifecycle := updater.LifecycleContext{Kind: updater.LifecycleNone, Schedule: ""}
 			if first {
 				lifecycle.Kind = updater.LifecycleStartup
 			}
-			assessment := state.ObserveRound(msg)
-			submitNotification(ctx, ppfmt, nt, state, updater.Compose(assessment, lifecycle))
+			reporter.Report(ctx, ppfmt, &result, lifecycle)
 		}
 
 		if ctxWithSignals.Err() != nil {
@@ -246,8 +237,7 @@ func runScheduled(workCtx, reportCtx context.Context, ppfmt pp.PP,
 			lifecycle := updater.LifecycleContext{
 				Kind: updater.LifecycleSchedulingFailure, Schedule: cron.DescribeSchedule(lifecycleConfig.UpdateCron),
 			}
-			assessment := observeCleanup(state, cleanup)
-			submitNotification(ctx, ppfmt, nt, state, updater.Compose(assessment, lifecycle))
+			reporter.Report(ctx, ppfmt, cleanup, lifecycle)
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			return 1
 		}
@@ -264,8 +254,7 @@ func runScheduled(workCtx, reportCtx context.Context, ppfmt pp.PP,
 			}
 			hb.Exit(ctx, ppfmt, "Stopped")
 			lifecycle := updater.LifecycleContext{Kind: updater.LifecycleShutdown, Schedule: ""}
-			assessment := observeCleanup(state, cleanup)
-			submitNotification(ctx, ppfmt, nt, state, updater.Compose(assessment, lifecycle))
+			reporter.Report(ctx, ppfmt, cleanup, lifecycle)
 			ppfmt.Infof(pp.EmojiBye, "Bye!")
 			if cleanup != nil && cleanup.Failed() {
 				return 1
@@ -273,12 +262,4 @@ func runScheduled(workCtx, reportCtx context.Context, ppfmt pp.PP,
 			return 0
 		}
 	} // mainLoop
-}
-
-// observeCleanup preserves lifecycle-only reporting when cleanup is disabled.
-func observeCleanup(state *updater.ReportingState, cleanup *updater.Message) updater.Assessment {
-	if cleanup == nil {
-		return updater.Assessment{}
-	}
-	return state.ObserveRound(*cleanup)
 }

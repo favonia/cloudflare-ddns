@@ -100,6 +100,12 @@ DNS management operations are synchronous: an unconfirmed attempt may or may not
 
 ## Contract Placement
 
-API boundaries own admitted reads, cache-versus-remote evidence, returned-data ownership, and supported mutation effects. Setters own immutable pre-operation snapshots and progress for operations actually reached, including WAF planned batches and completion evidence. Updaters preserve intent, targets, partial DNS results, and WAF outcomes. Process-owned reporting below `cmd/ddns` owns inference, coverage, and semantic content selection; the composition root selects lifecycle context and submits envelopes without inspecting record internals or cache expiry. Notifiers format and deliver composed notifications through existing transports; domain-state rendering and grouping belong to the reporting layer.
+API boundaries own admitted reads, cache-versus-remote evidence, returned-data ownership, and supported mutation effects. Setters own immutable pre-operation snapshots and progress for operations actually reached, including WAF planned batches and completion evidence. Updaters preserve intent, targets, partial DNS results, and WAF outcomes.
+
+One-shot reporting is a pure projection from an operation result, without lifecycle or cross-round state.
+
+A process-owned scheduled reporter owns inference, coverage, semantic content selection, and notification submission. The composition root supplies each completed operation result and its lifecycle context in one reporting call; absent operation results represent lifecycle-only events. The reporter advances inference even when no notification is selected, and records covered information immediately before submitting a nonempty notification, independently of delivery success. Call it serially, once per operation result, under a stable ownership scope. Snapshot, composition, and coverage phases are internal responsibilities rather than a protocol the composition root must assemble.
+
+Heartbeat delivery and its ordering relative to reporting remain in the composition root. Notifiers format and deliver composed notifications through existing transports; domain-state rendering and grouping belong to the reporting layer.
 
 Document snapshot ownership, copying, cache validity, result invariants, and caller obligations with the responsible types and functions. Exact wording and channel formatting follow [Operator Messages](../guides/operator-messages.markdown).

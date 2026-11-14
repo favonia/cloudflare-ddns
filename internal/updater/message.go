@@ -8,7 +8,7 @@ import (
 )
 
 // Message carries the updater work result and heartbeat status.
-// ReportingState assesses its semantic outcomes for notification composition.
+// OneShotNotification and ScheduledReporter report its semantic outcomes.
 type Message struct {
 	// HeartbeatMessage is a derived delivery projection. Changing it does not
 	// change the retained work result or notification assessment.
