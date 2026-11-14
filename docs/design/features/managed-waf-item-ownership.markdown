@@ -95,7 +95,7 @@ WAF refines the shared residual-risk policy with these tiers:
 
 WAF uses the shared reconciliation-intent semantics from [Lifecycle Model](lifecycle-model.markdown).
 
-Ordinary reconciliation may clear managed items from an existing list, but it does not actively delete the whole list.
+Update-round reconciliation may clear managed items from an existing list, but it does not actively delete the whole list.
 
 ## Deletion Eligibility
 
@@ -115,7 +115,7 @@ WAF list item caches store already-filtered managed items.
 
 This relies on one handle and its bound setter using one stable managed-item filter for their lifetime. The cache key does not include filter identity.
 
-Cloudflare item-creation and item-deletion APIs return whole-list content, so managed-item filtering must be reapplied before refreshing the cache.
+After a dispatched item mutation, replace the prior cache with usable returned list contents, filtered by managed-item ownership, or invalidate it.
 
 ## Tradeoffs
 

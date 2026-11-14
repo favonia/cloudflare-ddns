@@ -686,6 +686,7 @@ func TestDescribeBadAddress(t *testing.T) {
 		description string
 		bad         bool
 	}{
+		"invalid":              {netip.Addr{}, "is not a global unicast address", true},
 		"unspecified/4":        {mustIP("0.0.0.0"), "is an unspecified address", true},
 		"unspecified/6":        {mustIP("::"), "is an unspecified address", true},
 		"loopback/4":           {mustIP("127.0.0.1"), "is a loopback address", true},

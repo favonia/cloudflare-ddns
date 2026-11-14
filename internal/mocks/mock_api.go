@@ -46,12 +46,11 @@ func (m *MockHandle) EXPECT() *MockHandleMockRecorder {
 }
 
 // CreateRecord mocks base method.
-func (m *MockHandle) CreateRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, arg3 domain.Domain, ip netip.Addr, desiredParams api.RecordParams) (api.ID, bool) {
+func (m *MockHandle) CreateRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, arg3 domain.Domain, ip netip.Addr, desiredParams api.RecordParams) api.RecordMutation {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRecord", ctx, ppfmt, ipFamily, arg3, ip, desiredParams)
-	ret0, _ := ret[0].(api.ID)
-	ret1, _ := ret[1].(bool)
-	return ret0, ret1
+	ret0, _ := ret[0].(api.RecordMutation)
+	return ret0
 }
 
 // CreateRecord indicates an expected call of CreateRecord.
@@ -67,28 +66,28 @@ type MockHandleCreateRecordCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockHandleCreateRecordCall) Return(arg0 api.ID, arg1 bool) *MockHandleCreateRecordCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockHandleCreateRecordCall) Return(arg0 api.RecordMutation) *MockHandleCreateRecordCall {
+	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHandleCreateRecordCall) Do(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, netip.Addr, api.RecordParams) (api.ID, bool)) *MockHandleCreateRecordCall {
+func (c *MockHandleCreateRecordCall) Do(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, netip.Addr, api.RecordParams) api.RecordMutation) *MockHandleCreateRecordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHandleCreateRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, netip.Addr, api.RecordParams) (api.ID, bool)) *MockHandleCreateRecordCall {
+func (c *MockHandleCreateRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, netip.Addr, api.RecordParams) api.RecordMutation) *MockHandleCreateRecordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // CreateWAFListItems mocks base method.
-func (m *MockHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list api.WAFList, fallbackDescription string, items []api.WAFListCreateItem) bool {
+func (m *MockHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP, list api.WAFList, fallbackDescription string, items []api.WAFListCreateItem) api.WAFBatchResult {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateWAFListItems", ctx, ppfmt, list, fallbackDescription, items)
-	ret0, _ := ret[0].(bool)
+	ret0, _ := ret[0].(api.WAFBatchResult)
 	return ret0
 }
 
@@ -105,28 +104,28 @@ type MockHandleCreateWAFListItemsCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockHandleCreateWAFListItemsCall) Return(arg0 bool) *MockHandleCreateWAFListItemsCall {
+func (c *MockHandleCreateWAFListItemsCall) Return(arg0 api.WAFBatchResult) *MockHandleCreateWAFListItemsCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHandleCreateWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string, []api.WAFListCreateItem) bool) *MockHandleCreateWAFListItemsCall {
+func (c *MockHandleCreateWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string, []api.WAFListCreateItem) api.WAFBatchResult) *MockHandleCreateWAFListItemsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHandleCreateWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, []api.WAFListCreateItem) bool) *MockHandleCreateWAFListItemsCall {
+func (c *MockHandleCreateWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, []api.WAFListCreateItem) api.WAFBatchResult) *MockHandleCreateWAFListItemsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DeleteRecord mocks base method.
-func (m *MockHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, arg3 domain.Domain, id api.ID, mode api.DeletionMode) bool {
+func (m *MockHandle) DeleteRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, arg3 domain.Domain, id api.ID, mode api.DeletionMode) api.RecordMutation {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteRecord", ctx, ppfmt, ipFamily, arg3, id, mode)
-	ret0, _ := ret[0].(bool)
+	ret0, _ := ret[0].(api.RecordMutation)
 	return ret0
 }
 
@@ -143,28 +142,28 @@ type MockHandleDeleteRecordCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockHandleDeleteRecordCall) Return(arg0 bool) *MockHandleDeleteRecordCall {
+func (c *MockHandleDeleteRecordCall) Return(arg0 api.RecordMutation) *MockHandleDeleteRecordCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHandleDeleteRecordCall) Do(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.ID, api.DeletionMode) bool) *MockHandleDeleteRecordCall {
+func (c *MockHandleDeleteRecordCall) Do(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.ID, api.DeletionMode) api.RecordMutation) *MockHandleDeleteRecordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHandleDeleteRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.ID, api.DeletionMode) bool) *MockHandleDeleteRecordCall {
+func (c *MockHandleDeleteRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.ID, api.DeletionMode) api.RecordMutation) *MockHandleDeleteRecordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DeleteWAFListItems mocks base method.
-func (m *MockHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list api.WAFList, fallbackDescription string, ids []api.ID) bool {
+func (m *MockHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP, list api.WAFList, fallbackDescription string, ids []api.ID) api.WAFBatchResult {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteWAFListItems", ctx, ppfmt, list, fallbackDescription, ids)
-	ret0, _ := ret[0].(bool)
+	ret0, _ := ret[0].(api.WAFBatchResult)
 	return ret0
 }
 
@@ -181,28 +180,28 @@ type MockHandleDeleteWAFListItemsCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockHandleDeleteWAFListItemsCall) Return(arg0 bool) *MockHandleDeleteWAFListItemsCall {
+func (c *MockHandleDeleteWAFListItemsCall) Return(arg0 api.WAFBatchResult) *MockHandleDeleteWAFListItemsCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHandleDeleteWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string, []api.ID) bool) *MockHandleDeleteWAFListItemsCall {
+func (c *MockHandleDeleteWAFListItemsCall) Do(f func(context.Context, pp.PP, api.WAFList, string, []api.ID) api.WAFBatchResult) *MockHandleDeleteWAFListItemsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHandleDeleteWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, []api.ID) bool) *MockHandleDeleteWAFListItemsCall {
+func (c *MockHandleDeleteWAFListItemsCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, []api.ID) api.WAFBatchResult) *MockHandleDeleteWAFListItemsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // FinalCleanWAFList mocks base method.
-func (m *MockHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, fallbackDescription string, managedFamilies map[ipnet.Family]bool, mode api.CleanupMode) api.WAFListCleanupCode {
+func (m *MockHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP, list api.WAFList, fallbackDescription string, managedFamilies map[ipnet.Family]bool, mode api.CleanupMode) api.WAFCleanupResult {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FinalCleanWAFList", ctx, ppfmt, list, fallbackDescription, managedFamilies, mode)
-	ret0, _ := ret[0].(api.WAFListCleanupCode)
+	ret0, _ := ret[0].(api.WAFCleanupResult)
 	return ret0
 }
 
@@ -219,19 +218,19 @@ type MockHandleFinalCleanWAFListCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockHandleFinalCleanWAFListCall) Return(arg0 api.WAFListCleanupCode) *MockHandleFinalCleanWAFListCall {
+func (c *MockHandleFinalCleanWAFListCall) Return(arg0 api.WAFCleanupResult) *MockHandleFinalCleanWAFListCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHandleFinalCleanWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool, api.CleanupMode) api.WAFListCleanupCode) *MockHandleFinalCleanWAFListCall {
+func (c *MockHandleFinalCleanWAFListCall) Do(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool, api.CleanupMode) api.WAFCleanupResult) *MockHandleFinalCleanWAFListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHandleFinalCleanWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool, api.CleanupMode) api.WAFListCleanupCode) *MockHandleFinalCleanWAFListCall {
+func (c *MockHandleFinalCleanWAFListCall) DoAndReturn(f func(context.Context, pp.PP, api.WAFList, string, map[ipnet.Family]bool, api.CleanupMode) api.WAFCleanupResult) *MockHandleFinalCleanWAFListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -318,10 +317,10 @@ func (c *MockHandleListWAFListItemsCall) DoAndReturn(f func(context.Context, pp.
 }
 
 // UpdateRecord mocks base method.
-func (m *MockHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, arg3 domain.Domain, id api.ID, ip netip.Addr, desiredParams api.RecordParams) bool {
+func (m *MockHandle) UpdateRecord(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Family, arg3 domain.Domain, id api.ID, ip netip.Addr, desiredParams api.RecordParams) api.RecordMutation {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateRecord", ctx, ppfmt, ipFamily, arg3, id, ip, desiredParams)
-	ret0, _ := ret[0].(bool)
+	ret0, _ := ret[0].(api.RecordMutation)
 	return ret0
 }
 
@@ -338,19 +337,19 @@ type MockHandleUpdateRecordCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockHandleUpdateRecordCall) Return(arg0 bool) *MockHandleUpdateRecordCall {
+func (c *MockHandleUpdateRecordCall) Return(arg0 api.RecordMutation) *MockHandleUpdateRecordCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHandleUpdateRecordCall) Do(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.ID, netip.Addr, api.RecordParams) bool) *MockHandleUpdateRecordCall {
+func (c *MockHandleUpdateRecordCall) Do(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.ID, netip.Addr, api.RecordParams) api.RecordMutation) *MockHandleUpdateRecordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHandleUpdateRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.ID, netip.Addr, api.RecordParams) bool) *MockHandleUpdateRecordCall {
+func (c *MockHandleUpdateRecordCall) DoAndReturn(f func(context.Context, pp.PP, ipnet.Family, domain.Domain, api.ID, netip.Addr, api.RecordParams) api.RecordMutation) *MockHandleUpdateRecordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

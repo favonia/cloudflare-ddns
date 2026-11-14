@@ -248,3 +248,8 @@ func assertHandlersExhausted(t *testing.T, handlers ...httpHandler) {
 		require.True(t, h.isExhausted())
 	}
 }
+
+// createRecordOutcome adapts legacy success/cache assertions to operation evidence.
+func createRecordOutcome(result api.RecordMutation) (api.ID, bool) {
+	return result.Record.ID, result.Status == api.MutationCompleted
+}

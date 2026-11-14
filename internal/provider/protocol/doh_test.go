@@ -3,6 +3,7 @@ package protocol_test
 // vim: nowrap
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net/http"
@@ -772,4 +773,28 @@ func TestDNSOverHTTPSNameIsExplicitEmpty(t *testing.T) {
 			ipnet.IP4: {"https://localhost", "hello.", dnsmessage.ClassCHAOS},
 		},
 	}.IsExplicitEmpty())
+}
+
+// A response that fails during HTTP body reading must not become known-empty
+// detection data or be treated as a malformed, successfully read DNS response.
+func TestDNSOverHTTPSInterruptedResponse(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Length", "100")
+		_, _ = w.Write([]byte("incomplete"))
+	}))
+	t.Cleanup(server.Close)
+	provider := protocol.DNSOverHTTPS{
+		ProviderName: "test",
+		Param: map[ipnet.Family]protocol.DNSOverHTTPSParam{
+			ipnet.IP4: {URL: server.URL, Name: "test.", Class: dnsmessage.ClassCHAOS},
+		},
+		Rejecter: nil,
+	}
+	var output bytes.Buffer
+	result := provider.GetRawData(context.Background(), pp.New(&output, false, pp.Verbose), ipnet.IP4, 32)
+	require.Equal(t, protocol.NewUnavailableDetectionResult(), result)
+	require.Contains(t, output.String(), "Failed to read HTTP(S) response")
+	require.NotContains(t, output.String(), "Invalid DNS response")
 }

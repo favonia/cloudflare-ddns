@@ -44,8 +44,10 @@ func TestOperationSuccess(t *testing.T) {
 			if mode == "cleanup" && tc.response == setter.ResponseUpdating {
 				continue // CleanupWait does not return an in-progress result.
 			}
-			if mode == "stop" && (tc.cancelInWork || tc.cancelOnReport) {
-				continue // Scheduled cleanup uses a fresh, uncanceled shutdown context.
+			if mode == "stop" && (tc.cancelInWork || tc.cancelOnReport || !tc.reporterOK) {
+				// Cleanup execution has no reporter dependency; scheduled reporting is
+				// exercised through the shared lifecycle loop instead.
+				continue
 			}
 			t.Run(mode+"/"+tc.name, func(t *testing.T) {
 				t.Parallel()
@@ -59,6 +61,7 @@ func TestOperationSuccess(t *testing.T) {
 				reportCtx := t.Context()
 				list := api.WAFList{AccountID: "account", Name: "list"}
 				cfg := &config.UpdateConfig{
+					HasManagedRecordsSelector: false, HasManagedWAFListItemsSelector: false,
 					Provider: map[ipnet.Family]provider.Provider{ipnet.IP4: provider.NewStaticEmpty()},
 					Domains:  nil, HostID6: nil, WAFLists: []api.WAFList{list},
 					DefaultPrefixLen: map[ipnet.Family]int{ipnet.IP4: 32}, DetectionFilter: nil,
@@ -81,8 +84,8 @@ func TestOperationSuccess(t *testing.T) {
 				}
 				if mode == "update" {
 					s.EXPECT().SetWAFList(gomock.Any(), ppfmt, list, "", gomock.Any(), "").DoAndReturn(
-						func(ctx context.Context, _ pp.PP, _ api.WAFList, _ string, _ map[ipnet.Family]setter.WAFTargets, _ string) setter.ResponseCode {
-							return respond(ctx)
+						func(ctx context.Context, _ pp.PP, _ api.WAFList, _ string, _ map[ipnet.Family]setter.WAFTargets, _ string) setter.WAFResult {
+							return setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: respond(ctx)}
 						})
 				} else {
 					cleanupMode := api.CleanupWait
@@ -90,8 +93,8 @@ func TestOperationSuccess(t *testing.T) {
 						cleanupMode = api.CleanupAllowAsync
 					}
 					s.EXPECT().FinalClearWAFList(gomock.Any(), ppfmt, list, "", gomock.Any(), cleanupMode).DoAndReturn(
-						func(ctx context.Context, _ pp.PP, _ api.WAFList, _ string, _ map[ipnet.Family]bool, _ api.CleanupMode) setter.ResponseCode {
-							return respond(ctx)
+						func(ctx context.Context, _ pp.PP, _ api.WAFList, _ string, _ map[ipnet.Family]bool, _ api.CleanupMode) setter.WAFResult {
+							return setter.WAFResult{Before: nil, Batches: nil, Cleanup: nil, Code: respond(ctx)}
 						})
 				}
 				report := func(ctx context.Context, _ pp.PP, msg heartbeat.Message) bool {
@@ -102,15 +105,16 @@ func TestOperationSuccess(t *testing.T) {
 					require.Equal(t, tc.want, msg.OK)
 					return tc.reporterOK
 				}
-				if mode == "stop" {
-					hb.EXPECT().Log(reportCtx, ppfmt, gomock.Any()).DoAndReturn(report)
-				} else {
+				if mode != "stop" {
 					hb.EXPECT().Ping(reportCtx, ppfmt, gomock.Any()).DoAndReturn(report)
 				}
-				nt.EXPECT().Send(reportCtx, ppfmt, gomock.Any()).DoAndReturn(func(ctx context.Context, _ pp.PP, _ notifier.Notification) bool {
-					require.NoError(t, ctx.Err())
-					return tc.reporterOK
-				})
+				if mode != "stop" && tc.response != setter.ResponseNoop {
+					nt.EXPECT().Send(reportCtx, ppfmt, gomock.Any()).DoAndReturn(func(ctx context.Context, _ pp.PP, _ notifier.Notification) bool {
+						require.NoError(t, ctx.Err())
+						return tc.reporterOK
+					})
+				}
+
 				var ok bool
 				switch mode {
 				case "update":
@@ -118,7 +122,8 @@ func TestOperationSuccess(t *testing.T) {
 				case "cleanup":
 					ok = runOnceCleanup(workCtx, reportCtx, ppfmt, cfg, hb, nt, s)
 				case "stop":
-					ok = stopUpdating(reportCtx, ppfmt, &config.LifecycleConfig{UpdateCron: nil, UpdateOnStart: false, DeleteOnStop: true}, cfg, hb, nt, s)
+					msg := stopUpdating(reportCtx, ppfmt, &config.LifecycleConfig{UpdateCron: nil, UpdateOnStart: false, DeleteOnStop: true}, cfg, s)
+					ok = msg == nil || !msg.Failed()
 				}
 				require.Equal(t, tc.want, ok)
 			})

@@ -254,17 +254,25 @@ func (h cloudflareHandle) findWAFList(ctx context.Context, ppfmt pp.PP, list WAF
 	return listID, true
 }
 
+type wafListResolution struct {
+	ID                 ID
+	OK                 bool
+	CreationDispatched bool
+}
+
 // ensureWAFList returns the ID of the IP list with the given name, creating it if needed.
+// ID is usable only when OK. CreationDispatched records the structural request
+// independently of its completion, including an unconfirmed creation.
 func (h cloudflareHandle) ensureWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
 	fallbackDescription string,
-) (ID, bool) {
+) wafListResolution {
 	listID, found, ok := h.wafListID(ctx, ppfmt, list, fallbackDescription)
 	if !ok {
 		ppfmt.Noticef(pp.EmojiError, "Failed to find the list %s", list.Describe())
-		return "", false
+		return wafListResolution{ID: "", OK: false, CreationDispatched: false}
 	}
 	if found {
-		return listID, true
+		return wafListResolution{ID: listID, OK: true, CreationDispatched: false}
 	}
 
 	r, err := h.cf.CreateList(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
@@ -277,7 +285,7 @@ func (h cloudflareHandle) ensureWAFList(ctx context.Context, ppfmt pp.PP, list W
 		ppfmt.Noticef(pp.EmojiError, "Could not confirm that the list %s was created: %v", list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listLists.Delete(list.AccountID)
-		return "", false
+		return wafListResolution{ID: "", OK: false, CreationDispatched: true}
 	}
 
 	listID = ID(r.ID)
@@ -291,7 +299,7 @@ func (h cloudflareHandle) ensureWAFList(ctx context.Context, ppfmt pp.PP, list W
 	h.cache.listID.DeleteExpired()
 	h.cache.listID.Set(list, listID, ttlcache.DefaultTTL)
 	ppfmt.Noticef(pp.EmojiCreation, "Created a new list %s", list.Describe())
-	return listID, true
+	return wafListResolution{ID: listID, OK: true, CreationDispatched: true}
 }
 
 // FinalCleanWAFList removes managed WAF content during shutdown.
@@ -310,7 +318,8 @@ func (h cloudflareHandle) ensureWAFList(ctx context.Context, ppfmt pp.PP, list W
 // never trusts outdated managed-item views.
 func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 	list WAFList, fallbackDescription string, managedFamilies map[ipnet.Family]bool, mode CleanupMode,
-) WAFListCleanupCode {
+) WAFCleanupResult {
+	evidence := WAFCleanupResult{Before: nil, Stages: nil, Code: WAFListCleanupFailed}
 	allFamiliesInScope := true
 	for ipFamily := range ipnet.All {
 		if !managedFamilies[ipFamily] {
@@ -323,7 +332,7 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 	// Resolve list existence/ID first for both ownership modes.
 	listID, found, ok := h.wafListID(ctx, ppfmt, list, fallbackDescription)
 	if !ok {
-		return WAFListCleanupFailed
+		return evidence
 	}
 	if !found {
 		if tryDeleteWholeListFirst {
@@ -335,14 +344,34 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 			ppfmt.Infof(pp.EmojiAlreadyDone,
 				"Managed items in the list %s were already deleted", list.Describe())
 		}
-		return WAFListCleanupNoop
+		evidence.Code = WAFListCleanupNoop
+		evidence.Before = cloneWAFSnapshot(WAFSnapshot{Exists: false, Cached: false, Items: nil})
+		return evidence
 	}
 
 	if tryDeleteWholeListFirst {
+		evidence.Stages = append(evidence.Stages, WAFCleanupStage{
+			WholeList: true, Items: nil,
+			Result: WAFBatchResult{
+				ListCreationDispatched: false,
+				OK:                     false,
+				Status:                 WAFBatchUnconfirmed,
+				ReturnedManaged:        nil,
+				ReturnedAllItems:       nil,
+			},
+		})
 		if _, err := h.cf.DeleteList(ctx, cloudflare.AccountIdentifier(string(list.AccountID)), string(listID)); err == nil {
 			h.invalidateWAFListCleanupCache(list)
 			ppfmt.Noticef(pp.EmojiDeletion, "The list %s was deleted", list.Describe())
-			return WAFListCleanupUpdated
+			evidence.Code = WAFListCleanupUpdated
+			evidence.Stages[0].Result = WAFBatchResult{
+				ListCreationDispatched: false,
+				ReturnedManaged:        nil,
+				ReturnedAllItems:       nil,
+				OK:                     true,
+				Status:                 WAFBatchCompleted,
+			}
+			return evidence
 		} else {
 			ppfmt.Noticef(pp.EmojiError,
 				"Could not confirm deletion of the list %s; falling back to item deletion: %v", list.Describe(), err)
@@ -364,11 +393,12 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 		var allItems []WAFListItem
 		allItems, ok = h.listWAFListItemsByID(ctx, ppfmt, list, listID)
 		if !ok {
-			return WAFListCleanupFailed
+			return evidence
 		}
 		items = h.cacheManagedWAFListItems(list, allItems)
 	}
 
+	evidence.Before = cloneWAFSnapshot(WAFSnapshot{Exists: true, Cached: cached, Items: items})
 	itemsToDelete := items
 	if !allFamiliesInScope {
 		itemsToDelete = make([]WAFListItem, 0, len(items))
@@ -384,15 +414,12 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 
 	alreadyDeletedMessage := "Managed items in the list %s were already deleted"
 	alreadyDeletedCachedMessage := "Managed items in the list %s were already deleted (cached)"
-	deleteFailedMessage := "Could not confirm deletion of managed items in the list %s; list content may be inconsistent"
 	deletingMessage := "Deleting managed items in the list %s asynchronously"
 	deletedMessage := "Deleted managed items in the list %s"
 	if !allFamiliesInScope {
 		familiesDescription := describeInScopeWAFFamilies(managedFamilies)
 		alreadyDeletedMessage = "Managed " + familiesDescription + " items in the list %s were already deleted"
 		alreadyDeletedCachedMessage = "Managed " + familiesDescription + " items in the list %s were already deleted (cached)"
-		deleteFailedMessage = "Could not confirm deletion of managed " + familiesDescription +
-			" items in the list %s; list content may be inconsistent"
 		deletingMessage = "Deleting managed " + familiesDescription + " items in the list %s asynchronously"
 		deletedMessage = "Deleted managed " + familiesDescription + " items in the list %s"
 	}
@@ -402,9 +429,31 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 		ids = append(ids, item.ID)
 	}
 	result := h.deleteWAFListItemsForCleanup(ctx, ppfmt, list, listID, ids, mode)
+	evidence.Code = result
+	if len(ids) > 0 {
+		status := WAFBatchUnconfirmed
+		switch result {
+		case WAFListCleanupUpdated:
+			status = WAFBatchCompleted
+		case WAFListCleanupUpdating:
+			status = WAFBatchAccepted
+		default:
+			// Failed cleanup does not establish per-item completion.
+		}
+		evidence.Stages = append(evidence.Stages, WAFCleanupStage{
+			WholeList: false, Items: slices.Clone(itemsToDelete),
+			Result: WAFBatchResult{
+				ListCreationDispatched: false,
+				OK:                     result != WAFListCleanupFailed,
+				Status:                 status,
+				ReturnedManaged:        nil,
+				ReturnedAllItems:       nil,
+			},
+		})
+	}
 	switch result {
 	case WAFListCleanupFailed:
-		ppfmt.Noticef(pp.EmojiError, deleteFailedMessage, list.Describe())
+		// The deletion helper already reported the concrete failure.
 	case WAFListCleanupUpdating:
 		ppfmt.Noticef(pp.EmojiClear, deletingMessage, list.Describe())
 	case WAFListCleanupUpdated:
@@ -416,7 +465,7 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 			ppfmt.Infof(pp.EmojiAlreadyDone, alreadyDeletedMessage, list.Describe())
 		}
 	}
-	return result
+	return evidence
 }
 
 func describeInScopeWAFFamilies(managedFamilies map[ipnet.Family]bool) string {
@@ -575,7 +624,7 @@ func (h cloudflareHandle) cacheManagedWAFListItems(list WAFList, items []WAFList
 	return managedItems
 }
 
-// ListWAFListItems calls cloudflare.ListListItems, and maybe cloudflare.CreateList when needed.
+// ListWAFListItems calls cloudflare.ListListItems when the list exists.
 // It caches one managed-item view per handle/list pair.
 func (h cloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 	list WAFList, fallbackDescription, fallbackItemComment string,
@@ -608,16 +657,28 @@ func (h cloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 // DeleteWAFListItems calls cloudflare.DeleteListItems.
 func (h cloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 	list WAFList, fallbackDescription string, ids []ID,
-) bool {
+) WAFBatchResult {
 	if len(ids) == 0 {
-		return true
+		return WAFBatchResult{
+			ListCreationDispatched: false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			OK:                     true,
+			Status:                 WAFBatchNoEffect,
+		}
 	}
 
 	beforeCommentsByID, hasBeforeComments := h.cachedManagedWAFListItemCommentsByID(list)
 
 	listID, ok := h.findWAFList(ctx, ppfmt, list, fallbackDescription)
 	if !ok {
-		return false
+		return WAFBatchResult{
+			ListCreationDispatched: false,
+			OK:                     false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			Status:                 WAFBatchNoEffect,
+		}
 	}
 
 	itemRequests := make([]cloudflare.ListItemDeleteItemRequest, 0, len(ids))
@@ -636,12 +697,27 @@ func (h cloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 			"Could not confirm that items were deleted from the list %s: %v", list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)
-		return false
+		return WAFBatchResult{
+			ListCreationDispatched: false,
+			OK:                     false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			Status:                 WAFBatchUnconfirmed,
+		}
 	}
 
 	items, ok := readWAFListItems(ppfmt, list, rawItems)
 	if !ok {
-		return false
+		// Completion is independent of the returned inventory's usability.
+		h.cache.listListItems.Delete(list)
+		ppfmt.Noticef(pp.EmojiDeletion, "Removal completed in the list %s", list.Describe())
+		return WAFBatchResult{
+			ListCreationDispatched: false,
+			OK:                     false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			Status:                 WAFBatchCompleted,
+		}
 	}
 
 	managedItems := h.cacheManagedWAFListItems(list, items)
@@ -657,23 +733,41 @@ func (h cloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 			nil,
 		)
 	}
-	return true
+	return WAFBatchResult{
+		ListCreationDispatched: false,
+		OK:                     true,
+		Status:                 WAFBatchCompleted,
+		ReturnedManaged:        cloneWAFSnapshot(WAFSnapshot{Exists: true, Cached: false, Items: managedItems}),
+		ReturnedAllItems:       slices.Clone(items),
+	}
 }
 
 // CreateWAFListItems calls cloudflare.CreateListItems.
 func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 	list WAFList, fallbackDescription string,
 	itemsToCreate []WAFListCreateItem,
-) bool {
+) WAFBatchResult {
 	if len(itemsToCreate) == 0 {
-		return true
+		return WAFBatchResult{
+			ListCreationDispatched: false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			OK:                     true,
+			Status:                 WAFBatchNoEffect,
+		}
 	}
 
 	beforeCommentsByID, hasBeforeComments := h.cachedManagedWAFListItemCommentsByID(list)
 
-	listID, ok := h.ensureWAFList(ctx, ppfmt, list, fallbackDescription)
-	if !ok {
-		return false
+	resolution := h.ensureWAFList(ctx, ppfmt, list, fallbackDescription)
+	if !resolution.OK {
+		return WAFBatchResult{
+			ListCreationDispatched: resolution.CreationDispatched,
+			OK:                     false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			Status:                 WAFBatchNoEffect,
+		}
 	}
 
 	rawItemsToCreate := make([]cloudflare.ListItemCreateRequest, 0, len(itemsToCreate))
@@ -690,7 +784,7 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 
 	rawItems, err := h.cf.CreateListItems(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
 		cloudflare.ListCreateItemsParams{
-			ID:    string(listID),
+			ID:    string(resolution.ID),
 			Items: rawItemsToCreate,
 		},
 	)
@@ -700,12 +794,27 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 			list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)
-		return false
+		return WAFBatchResult{
+			ListCreationDispatched: resolution.CreationDispatched,
+			OK:                     false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			Status:                 WAFBatchUnconfirmed,
+		}
 	}
 
 	items, ok := readWAFListItems(ppfmt, list, rawItems)
 	if !ok {
-		return false
+		// Completion is independent of the returned inventory's usability.
+		h.cache.listListItems.Delete(list)
+		ppfmt.Noticef(pp.EmojiCreation, "Addition completed in the list %s", list.Describe())
+		return WAFBatchResult{
+			ListCreationDispatched: resolution.CreationDispatched,
+			OK:                     false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			Status:                 WAFBatchCompleted,
+		}
 	}
 
 	managedItems := h.cacheManagedWAFListItems(list, items)
@@ -722,5 +831,11 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 			allowedWAFListItemCommentsSetFromCreateItems(itemsToCreate),
 		)
 	}
-	return true
+	return WAFBatchResult{
+		ListCreationDispatched: resolution.CreationDispatched,
+		OK:                     true,
+		Status:                 WAFBatchCompleted,
+		ReturnedManaged:        cloneWAFSnapshot(WAFSnapshot{Exists: true, Cached: false, Items: managedItems}),
+		ReturnedAllItems:       slices.Clone(items),
+	}
 }

@@ -40,7 +40,7 @@ func TestFinalCleanWAFListWaitsForItems(t *testing.T) {
 		result := f.cfHandle.FinalCleanWAFList(context.Background(), pp.NewSilent(),
 			mockWAFList, "description", cleanupFamilies(ipnet.IP4, ipnet.IP6), api.CleanupWait)
 
-		require.Equal(t, api.WAFListCleanupUpdated, result)
+		require.Equal(t, api.WAFListCleanupUpdated, result.Code)
 		assertHandlersExhausted(t, lists, items, deletion)
 	})
 }
@@ -108,7 +108,29 @@ func TestFinalCleanWAFListCompletionOutcomes(t *testing.T) {
 				items.setRequestLimit(1)
 				deletion.setRequestLimit(1)
 				result := f.cfHandle.FinalCleanWAFList(ctx, pp.NewSilent(), mockWAFList, "description", families, tc.mode)
-				require.Equal(t, tc.want, result)
+				require.Equal(t, tc.want, result.Code)
+				require.NotNil(t, result.Before)
+				stages := result.Stages
+				expectedStages := 1
+				if tc.wholeList {
+					expectedStages = 2
+				}
+				require.Len(t, stages, expectedStages)
+				if tc.wholeList {
+					require.True(t, stages[0].WholeList)
+					require.Equal(t, api.WAFBatchUnconfirmed, stages[0].Result.Status)
+				}
+				last := stages[len(stages)-1]
+				require.False(t, last.WholeList)
+				require.Len(t, last.Items, len(expectedIDs))
+				wantStatus := api.WAFBatchUnconfirmed
+				if tc.want == api.WAFListCleanupUpdated {
+					wantStatus = api.WAFBatchCompleted
+				}
+				if tc.want == api.WAFListCleanupUpdating {
+					wantStatus = api.WAFBatchAccepted
+				}
+				require.Equal(t, wantStatus, last.Result.Status)
 				if tc.mode == api.CleanupAllowAsync {
 					require.Zero(t, polls)
 				} else {
