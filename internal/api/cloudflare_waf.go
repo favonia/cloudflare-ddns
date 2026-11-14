@@ -254,18 +254,25 @@ func (h cloudflareHandle) findWAFList(ctx context.Context, ppfmt pp.PP, list WAF
 	return listID, true
 }
 
+type wafListResolution struct {
+	ID                 ID
+	OK                 bool
+	CreationDispatched bool
+}
+
 // ensureWAFList returns the ID of the IP list with the given name, creating it if needed.
-// Returns the ID, success, and whether structural creation was dispatched.
+// ID is usable only when OK. CreationDispatched records the structural request
+// independently of its completion, including an unconfirmed creation.
 func (h cloudflareHandle) ensureWAFList(ctx context.Context, ppfmt pp.PP, list WAFList,
 	fallbackDescription string,
-) (ID, bool, bool) {
+) wafListResolution {
 	listID, found, ok := h.wafListID(ctx, ppfmt, list, fallbackDescription)
 	if !ok {
 		ppfmt.Noticef(pp.EmojiError, "Failed to find the list %s", list.Describe())
-		return "", false, false
+		return wafListResolution{ID: "", OK: false, CreationDispatched: false}
 	}
 	if found {
-		return listID, true, false
+		return wafListResolution{ID: listID, OK: true, CreationDispatched: false}
 	}
 
 	r, err := h.cf.CreateList(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
@@ -278,7 +285,7 @@ func (h cloudflareHandle) ensureWAFList(ctx context.Context, ppfmt pp.PP, list W
 		ppfmt.Noticef(pp.EmojiError, "Could not confirm that the list %s was created: %v", list.Describe(), err)
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listLists.Delete(list.AccountID)
-		return "", false, true
+		return wafListResolution{ID: "", OK: false, CreationDispatched: true}
 	}
 
 	listID = ID(r.ID)
@@ -292,7 +299,7 @@ func (h cloudflareHandle) ensureWAFList(ctx context.Context, ppfmt pp.PP, list W
 	h.cache.listID.DeleteExpired()
 	h.cache.listID.Set(list, listID, ttlcache.DefaultTTL)
 	ppfmt.Noticef(pp.EmojiCreation, "Created a new list %s", list.Describe())
-	return listID, true, true
+	return wafListResolution{ID: listID, OK: true, CreationDispatched: true}
 }
 
 // FinalCleanWAFList removes managed WAF content during shutdown.
@@ -338,7 +345,7 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 				"Managed items in the list %s were already deleted", list.Describe())
 		}
 		evidence.Code = WAFListCleanupNoop
-		evidence.Before = snapshotWAFItems(nil, false, false)
+		evidence.Before = cloneWAFSnapshot(WAFSnapshot{Exists: false, Cached: false, Items: nil})
 		return evidence
 	}
 
@@ -346,8 +353,11 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 		evidence.Stages = append(evidence.Stages, WAFCleanupStage{
 			WholeList: true, Items: nil,
 			Result: WAFBatchResult{
-				PrerequisiteMutation: false,
-				OK:                   false, Status: WAFBatchUnconfirmed, Returned: nil, ReturnedItems: nil,
+				ListCreationDispatched: false,
+				OK:                     false,
+				Status:                 WAFBatchUnconfirmed,
+				ReturnedManaged:        nil,
+				ReturnedAllItems:       nil,
 			},
 		})
 		if _, err := h.cf.DeleteList(ctx, cloudflare.AccountIdentifier(string(list.AccountID)), string(listID)); err == nil {
@@ -355,8 +365,11 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 			ppfmt.Noticef(pp.EmojiDeletion, "The list %s was deleted", list.Describe())
 			evidence.Code = WAFListCleanupUpdated
 			evidence.Stages[0].Result = WAFBatchResult{
-				PrerequisiteMutation: false,
-				Returned:             nil, ReturnedItems: nil, OK: true, Status: WAFBatchCompleted,
+				ListCreationDispatched: false,
+				ReturnedManaged:        nil,
+				ReturnedAllItems:       nil,
+				OK:                     true,
+				Status:                 WAFBatchCompleted,
 			}
 			return evidence
 		} else {
@@ -385,7 +398,7 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 		items = h.cacheManagedWAFListItems(list, allItems)
 	}
 
-	evidence.Before = snapshotWAFItems(items, true, cached)
+	evidence.Before = cloneWAFSnapshot(WAFSnapshot{Exists: true, Cached: cached, Items: items})
 	itemsToDelete := items
 	if !allFamiliesInScope {
 		itemsToDelete = make([]WAFListItem, 0, len(items))
@@ -430,8 +443,11 @@ func (h cloudflareHandle) FinalCleanWAFList(ctx context.Context, ppfmt pp.PP,
 		evidence.Stages = append(evidence.Stages, WAFCleanupStage{
 			WholeList: false, Items: slices.Clone(itemsToDelete),
 			Result: WAFBatchResult{
-				PrerequisiteMutation: false,
-				OK:                   result != WAFListCleanupFailed, Status: status, Returned: nil, ReturnedItems: nil,
+				ListCreationDispatched: false,
+				OK:                     result != WAFListCleanupFailed,
+				Status:                 status,
+				ReturnedManaged:        nil,
+				ReturnedAllItems:       nil,
 			},
 		})
 	}
@@ -644,8 +660,11 @@ func (h cloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 ) WAFBatchResult {
 	if len(ids) == 0 {
 		return WAFBatchResult{
-			PrerequisiteMutation: false,
-			Returned:             nil, ReturnedItems: nil, OK: true, Status: WAFBatchNoEffect,
+			ListCreationDispatched: false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			OK:                     true,
+			Status:                 WAFBatchNoEffect,
 		}
 	}
 
@@ -654,8 +673,11 @@ func (h cloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 	listID, ok := h.findWAFList(ctx, ppfmt, list, fallbackDescription)
 	if !ok {
 		return WAFBatchResult{
-			PrerequisiteMutation: false,
-			OK:                   false, Returned: nil, ReturnedItems: nil, Status: WAFBatchNoEffect,
+			ListCreationDispatched: false,
+			OK:                     false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			Status:                 WAFBatchNoEffect,
 		}
 	}
 
@@ -676,8 +698,11 @@ func (h cloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)
 		return WAFBatchResult{
-			PrerequisiteMutation: false,
-			OK:                   false, Returned: nil, ReturnedItems: nil, Status: WAFBatchUnconfirmed,
+			ListCreationDispatched: false,
+			OK:                     false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			Status:                 WAFBatchUnconfirmed,
 		}
 	}
 
@@ -687,8 +712,11 @@ func (h cloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 		h.cache.listListItems.Delete(list)
 		ppfmt.Noticef(pp.EmojiDeletion, "Removal completed in the list %s", list.Describe())
 		return WAFBatchResult{
-			PrerequisiteMutation: false,
-			OK:                   false, Returned: nil, ReturnedItems: nil, Status: WAFBatchCompleted,
+			ListCreationDispatched: false,
+			OK:                     false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			Status:                 WAFBatchCompleted,
 		}
 	}
 
@@ -706,10 +734,11 @@ func (h cloudflareHandle) DeleteWAFListItems(ctx context.Context, ppfmt pp.PP,
 		)
 	}
 	return WAFBatchResult{
-		PrerequisiteMutation: false,
-
-		OK: true, Status: WAFBatchCompleted,
-		Returned: snapshotWAFItems(managedItems, true, false), ReturnedItems: slices.Clone(items),
+		ListCreationDispatched: false,
+		OK:                     true,
+		Status:                 WAFBatchCompleted,
+		ReturnedManaged:        cloneWAFSnapshot(WAFSnapshot{Exists: true, Cached: false, Items: managedItems}),
+		ReturnedAllItems:       slices.Clone(items),
 	}
 }
 
@@ -720,18 +749,24 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 ) WAFBatchResult {
 	if len(itemsToCreate) == 0 {
 		return WAFBatchResult{
-			PrerequisiteMutation: false,
-			Returned:             nil, ReturnedItems: nil, OK: true, Status: WAFBatchNoEffect,
+			ListCreationDispatched: false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			OK:                     true,
+			Status:                 WAFBatchNoEffect,
 		}
 	}
 
 	beforeCommentsByID, hasBeforeComments := h.cachedManagedWAFListItemCommentsByID(list)
 
-	listID, ok, prerequisiteMutation := h.ensureWAFList(ctx, ppfmt, list, fallbackDescription)
-	if !ok {
+	resolution := h.ensureWAFList(ctx, ppfmt, list, fallbackDescription)
+	if !resolution.OK {
 		return WAFBatchResult{
-			PrerequisiteMutation: prerequisiteMutation,
-			OK:                   false, Returned: nil, ReturnedItems: nil, Status: WAFBatchNoEffect,
+			ListCreationDispatched: resolution.CreationDispatched,
+			OK:                     false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			Status:                 WAFBatchNoEffect,
 		}
 	}
 
@@ -749,7 +784,7 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 
 	rawItems, err := h.cf.CreateListItems(ctx, cloudflare.AccountIdentifier(string(list.AccountID)),
 		cloudflare.ListCreateItemsParams{
-			ID:    string(listID),
+			ID:    string(resolution.ID),
 			Items: rawItemsToCreate,
 		},
 	)
@@ -760,8 +795,11 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 		hintWAFListPermission(ppfmt, err)
 		h.cache.listListItems.Delete(list)
 		return WAFBatchResult{
-			PrerequisiteMutation: prerequisiteMutation,
-			OK:                   false, Returned: nil, ReturnedItems: nil, Status: WAFBatchUnconfirmed,
+			ListCreationDispatched: resolution.CreationDispatched,
+			OK:                     false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			Status:                 WAFBatchUnconfirmed,
 		}
 	}
 
@@ -771,8 +809,11 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 		h.cache.listListItems.Delete(list)
 		ppfmt.Noticef(pp.EmojiCreation, "Addition completed in the list %s", list.Describe())
 		return WAFBatchResult{
-			PrerequisiteMutation: prerequisiteMutation,
-			OK:                   false, Returned: nil, ReturnedItems: nil, Status: WAFBatchCompleted,
+			ListCreationDispatched: resolution.CreationDispatched,
+			OK:                     false,
+			ReturnedManaged:        nil,
+			ReturnedAllItems:       nil,
+			Status:                 WAFBatchCompleted,
 		}
 	}
 
@@ -791,8 +832,10 @@ func (h cloudflareHandle) CreateWAFListItems(ctx context.Context, ppfmt pp.PP,
 		)
 	}
 	return WAFBatchResult{
-		PrerequisiteMutation: prerequisiteMutation,
-		OK:                   true, Status: WAFBatchCompleted,
-		Returned: snapshotWAFItems(managedItems, true, false), ReturnedItems: slices.Clone(items),
+		ListCreationDispatched: resolution.CreationDispatched,
+		OK:                     true,
+		Status:                 WAFBatchCompleted,
+		ReturnedManaged:        cloneWAFSnapshot(WAFSnapshot{Exists: true, Cached: false, Items: managedItems}),
+		ReturnedAllItems:       slices.Clone(items),
 	}
 }

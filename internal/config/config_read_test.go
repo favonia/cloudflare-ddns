@@ -1611,8 +1611,8 @@ func TestBuildConfig(t *testing.T) {
 				if tc.expected.update.DetectionFilter == nil {
 					tc.expected.update.DetectionFilter = defaultDetectionFilter(tc.expected.update.Provider)
 				}
-				tc.expected.update.ManagedRecordsFiltered = raw.ManagedRecordsCommentRegex != ""
-				tc.expected.update.ManagedWAFListItemsFiltered = raw.ManagedWAFListItemsCommentRegex != ""
+				tc.expected.update.HasManagedRecordsSelector = raw.ManagedRecordsCommentRegex != ""
+				tc.expected.update.HasManagedWAFListItemsSelector = raw.ManagedWAFListItemsCommentRegex != ""
 				require.Equal(t, tc.expected.update, builtConfig.Update)
 			} else {
 				require.Nil(t, builtConfig)
@@ -1741,8 +1741,8 @@ func TestBuildConfigReportingSelectors(t *testing.T) {
 			raw.ManagedWAFListItemsCommentRegex = selector
 			built, ok := raw.BuildConfig(pp.NewSilent())
 			require.True(t, ok)
-			require.Equal(t, selector != "", built.Update.ManagedRecordsFiltered)
-			require.Equal(t, selector != "", built.Update.ManagedWAFListItemsFiltered)
+			require.Equal(t, selector != "", built.Update.HasManagedRecordsSelector)
+			require.Equal(t, selector != "", built.Update.HasManagedWAFListItemsSelector)
 			require.Equal(t, selector, built.Handle.Options.ManagedRecordsCommentRegex.String())
 			require.Equal(t, selector, built.Handle.Options.ManagedWAFListItemsCommentRegex.String())
 			require.Equal(t, selector == "", built.Handle.Options.AllowWholeWAFListDeleteOnShutdown)

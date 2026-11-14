@@ -22,20 +22,20 @@ func TestWAFEvidenceOwnsEveryMutableLayer(t *testing.T) {
 	t.Parallel()
 	item := api.WAFListItem{ID: "original", Prefix: netip.MustParsePrefix("192.0.2.0/24"), Comment: "owned"}
 	snapshot := &api.WAFSnapshot{Exists: true, Cached: true, Items: []api.WAFListItem{item}}
-	batchResult := &api.WAFBatchResult{PrerequisiteMutation: true, OK: true, Status: api.WAFBatchCompleted, Returned: snapshot, ReturnedItems: []api.WAFListItem{item}}
+	batchResult := &api.WAFBatchResult{ListCreationDispatched: true, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: snapshot, ReturnedAllItems: []api.WAFListItem{item}}
 	source := wafOutcome{filtered: false, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, scope: wafScope{ipnet.IP4: true}, result: setter.WAFResult{Code: setter.ResponseNoop, Before: snapshot, Batches: []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: item.Prefix, Comment: item.Comment}}, Delete: []api.WAFListItem{item}, Result: batchResult}}, Cleanup: &api.WAFCleanupResult{Code: 0, Before: snapshot, Stages: []api.WAFCleanupStage{{WholeList: false, Items: []api.WAFListItem{item}, Result: *batchResult}}}}}
 	mutations := map[string]func(*wafOutcome){
 		"before":           func(o *wafOutcome) { o.result.Before.Items[0].ID = "changed" },
 		"create":           func(o *wafOutcome) { o.result.Batches[0].Create[0].Comment = "changed" },
 		"delete":           func(o *wafOutcome) { o.result.Batches[0].Delete[0].ID = "changed" },
-		"prerequisite":     func(o *wafOutcome) { o.result.Batches[0].Result.PrerequisiteMutation = false },
+		"prerequisite":     func(o *wafOutcome) { o.result.Batches[0].Result.ListCreationDispatched = false },
 		"result":           func(o *wafOutcome) { o.result.Batches[0].Result.OK = false },
-		"returned":         func(o *wafOutcome) { o.result.Batches[0].Result.Returned.Items[0].ID = "changed" },
-		"membership":       func(o *wafOutcome) { o.result.Batches[0].Result.ReturnedItems[0].ID = "changed" },
+		"returned":         func(o *wafOutcome) { o.result.Batches[0].Result.ReturnedManaged.Items[0].ID = "changed" },
+		"membership":       func(o *wafOutcome) { o.result.Batches[0].Result.ReturnedAllItems[0].ID = "changed" },
 		"cleanup":          func(o *wafOutcome) { o.result.Cleanup.Before.Items[0].ID = "changed" },
 		"stage":            func(o *wafOutcome) { o.result.Cleanup.Stages[0].Items[0].ID = "changed" },
-		"stage returned":   func(o *wafOutcome) { o.result.Cleanup.Stages[0].Result.Returned.Items[0].ID = "changed" },
-		"stage membership": func(o *wafOutcome) { o.result.Cleanup.Stages[0].Result.ReturnedItems[0].ID = "changed" },
+		"stage returned":   func(o *wafOutcome) { o.result.Cleanup.Stages[0].Result.ReturnedManaged.Items[0].ID = "changed" },
+		"stage membership": func(o *wafOutcome) { o.result.Cleanup.Stages[0].Result.ReturnedAllItems[0].ID = "changed" },
 		"configured":       func(o *wafOutcome) { delete(o.scope, ipnet.IP4) },
 		"active":           func(o *wafOutcome) { o.scope[ipnet.IP4] = false },
 	}
@@ -46,7 +46,7 @@ func TestWAFEvidenceOwnsEveryMutableLayer(t *testing.T) {
 			message := newMessage()
 			message.waf = []wafOutcome{input}
 			merged := mergeMessages(message)
-			assessment := NewReportingState(false).Assess(message)
+			assessment := NewOneShotReportingState().ObserveRound(message)
 			mutate(&input)
 			require.Equal(t, source, merged.waf[0])
 			require.Equal(t, source, assessment.waf[0])

@@ -110,7 +110,7 @@ func (o wafOutcome) content() wafContent {
 	required := false
 	for index, batch := range o.result.Batches {
 		result := batch.Result
-		if result != nil && result.PrerequisiteMutation {
+		if result != nil && result.ListCreationDispatched {
 			content.inputHistorical = true
 			content.observed = nil
 		}
@@ -132,7 +132,7 @@ func (o wafOutcome) content() wafContent {
 			complete = false
 			continue
 		}
-		after = result.Returned
+		after = result.ReturnedManaged
 		if after == nil {
 			content.issues = []wafContentIssue{wafReturnedContentsUnavailable}
 			complete = false
@@ -151,7 +151,7 @@ func (o wafOutcome) content() wafContent {
 		if !batchMembershipConsistent(ownedIDs, batch) {
 			complete = false
 		}
-		for _, item := range result.ReturnedItems {
+		for _, item := range result.ReturnedAllItems {
 			selected := slices.ContainsFunc(after.Items, func(owned api.WAFListItem) bool { return owned.ID == item.ID })
 			if ownedIDs[item.ID] && !selected {
 				content.exclusions = append(content.exclusions, wafExclusion{batchIndex: index, item: item})
@@ -192,7 +192,7 @@ func (o wafOutcome) cleanupContent(content *wafContent, input *api.WAFSnapshot) 
 			}
 			continue
 		}
-		if stage.Result.Status != api.WAFBatchNoEffect || stage.Result.PrerequisiteMutation {
+		if stage.Result.Status != api.WAFBatchNoEffect || stage.Result.ListCreationDispatched {
 			content.inputHistorical = true
 			content.observed = nil
 		}
@@ -250,11 +250,11 @@ func trustworthyWAFItems(items []api.WAFListItem) bool {
 // contains the selected items verbatim. A nil full slice represents empty
 // returned contents, not permission to omit nonempty membership evidence.
 func trustworthyWAFResponse(result api.WAFBatchResult) bool {
-	if !trustworthyWAFItems(result.Returned.Items) || !trustworthyWAFItems(result.ReturnedItems) {
+	if !trustworthyWAFItems(result.ReturnedManaged.Items) || !trustworthyWAFItems(result.ReturnedAllItems) {
 		return false
 	}
-	for _, item := range result.Returned.Items {
-		if !slices.Contains(result.ReturnedItems, item) {
+	for _, item := range result.ReturnedManaged.Items {
+		if !slices.Contains(result.ReturnedAllItems, item) {
 			return false
 		}
 	}
@@ -266,8 +266,8 @@ func trustworthyWAFResponse(result api.WAFBatchResult) bool {
 // cannot identify a created item or establish exclusion, but leaves requested
 // managed creation unresolved. Other unowned items remain outside this guard.
 func batchMembershipConsistent(ownedIDs map[api.ID]bool, batch setter.WAFBatch) bool {
-	for _, item := range batch.Result.ReturnedItems {
-		selected := slices.ContainsFunc(batch.Result.Returned.Items, func(owned api.WAFListItem) bool {
+	for _, item := range batch.Result.ReturnedAllItems {
+		selected := slices.ContainsFunc(batch.Result.ReturnedManaged.Items, func(owned api.WAFListItem) bool {
 			return owned.ID == item.ID
 		})
 		if selected {

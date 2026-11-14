@@ -30,19 +30,25 @@ type LifecycleContext struct {
 }
 
 // ReportingState owns process-local DNS inference and submitted Before coverage
-// under one stable managed ownership scope. Call Assess once per completed round,
-// then Compose and Submitted serially. Delivery success does not affect this state.
+// under one stable managed ownership scope. Call ObserveRound once per completed round,
+// then Compose and RecordSubmission serially. Delivery success does not affect this state.
 type ReportingState struct {
 	scheduled bool
 	inference map[dnsScope]*dnsInference
 	covered   map[dnsScope]bool
 }
 
-// NewReportingState enables cross-round inference and first-known coverage only
-// for scheduled processes. One-shot operations still retain their operation facts.
-func NewReportingState(scheduled bool) *ReportingState {
+// NewOneShotReportingState reports operation facts without tracking cross-round
+// inference or first-known address coverage.
+func NewOneShotReportingState() *ReportingState {
+	return &ReportingState{scheduled: false, inference: nil, covered: nil}
+}
+
+// NewScheduledReportingState tracks cross-round inference and first-known
+// address coverage for one scheduled process with a stable managed ownership scope.
+func NewScheduledReportingState() *ReportingState {
 	return &ReportingState{
-		scheduled: scheduled,
+		scheduled: true,
 		inference: make(map[dnsScope]*dnsInference),
 		covered:   make(map[dnsScope]bool),
 	}
@@ -64,10 +70,11 @@ type Assessment struct {
 	cleanup  bool
 }
 
-// Assess advances inference exactly once for each invoked DNS scope, independently
-// of composition or delivery. It snapshots missing coverage without consuming it.
-// The caller must not assess the same completed round more than once.
-func (s *ReportingState) Assess(message Message) Assessment {
+// ObserveRound returns an owned assessment of a completed update or cleanup round.
+// For scheduled reporting, it advances DNS inference independently of composition
+// or delivery and snapshots missing coverage without consuming it.
+// Call exactly once per completed round.
+func (s *ReportingState) ObserveRound(message Message) Assessment {
 	a := Assessment{
 		dns:      make([]assessedDNS, 0, len(message.dns)),
 		waf:      make([]wafOutcome, 0, len(message.waf)),
@@ -112,10 +119,11 @@ func (e Envelope) Notification() notifier.Notification {
 // IsEmpty reports whether there is any selected notification content.
 func (e Envelope) IsEmpty() bool { return e.notification.IsEmpty() }
 
-// Submitted records only known Before information included in a nonempty envelope.
+// RecordSubmission marks the known Before information in a nonempty envelope
+// as covered for scheduled reporting. It has no effect on one-shot reporting.
 // The envelope must come from this state and ownership scope. Call immediately
 // before Notifier.Send, irrespective of its eventual return value.
-func (s *ReportingState) Submitted(e Envelope) {
+func (s *ReportingState) RecordSubmission(e Envelope) {
 	if !s.scheduled || e.IsEmpty() {
 		return
 	}

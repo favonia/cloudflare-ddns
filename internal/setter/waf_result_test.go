@@ -24,11 +24,11 @@ func TestWAFResultPreservesBatchBoundariesAndOwnedEvidence(t *testing.T) {
 		deleteOK bool
 		want     setter.ResponseCode
 	}{
-		{"blocked-create", api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchNoEffect}, false, setter.ResponseFailed},
-		{"unconfirmed-create", api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchUnconfirmed}, false, setter.ResponseFailed},
-		{"invalid-create-response", api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchCompleted}, false, setter.ResponseFailed},
-		{"create-then-failed-delete", api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}, false, setter.ResponseFailed},
-		{"completed-batches", api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}, true, setter.ResponseUpdated},
+		{"blocked-create", api.WAFBatchResult{ListCreationDispatched: false, OK: false, ReturnedManaged: nil, ReturnedAllItems: nil, Status: api.WAFBatchNoEffect}, false, setter.ResponseFailed},
+		{"unconfirmed-create", api.WAFBatchResult{ListCreationDispatched: false, OK: false, ReturnedManaged: nil, ReturnedAllItems: nil, Status: api.WAFBatchUnconfirmed}, false, setter.ResponseFailed},
+		{"invalid-create-response", api.WAFBatchResult{ListCreationDispatched: false, OK: false, ReturnedManaged: nil, ReturnedAllItems: nil, Status: api.WAFBatchCompleted}, false, setter.ResponseFailed},
+		{"create-then-failed-delete", api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}, false, setter.ResponseFailed},
+		{"completed-batches", api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}, true, setter.ResponseUpdated},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -40,13 +40,13 @@ func TestWAFResultPreservesBatchBoundariesAndOwnedEvidence(t *testing.T) {
 			target := netip.MustParsePrefix("198.51.100.1/32")
 			createItems := []api.WAFListCreateItem{{Prefix: target, Comment: "managed"}}
 			returnedItem := api.WAFListItem{ID: "new", Prefix: target, Comment: "outside-selector"}
-			returnedItems := []api.WAFListItem{returnedItem}
+			returnedItems := []api.WAFListItem{old, unavailable, returnedItem}
 			selected := []api.WAFListItem{old, unavailable}
 			create := tc.create
-			create.PrerequisiteMutation = true
+			create.ListCreationDispatched = true
 			if create.OK {
-				create.Returned = &api.WAFSnapshot{Cached: false, Exists: true, Items: selected}
-				create.ReturnedItems = returnedItems
+				create.ReturnedManaged = &api.WAFSnapshot{Cached: false, Exists: true, Items: selected}
+				create.ReturnedAllItems = returnedItems
 			}
 			p := pp.NewSilent()
 			s := setter.New(h.mockHandle)
@@ -78,13 +78,13 @@ func TestWAFResultPreservesBatchBoundariesAndOwnedEvidence(t *testing.T) {
 			require.Empty(t, result.Batches[1].Create)
 			require.NotNil(t, result.Batches[0].Result)
 			require.Equal(t, tc.create.Status, result.Batches[0].Result.Status)
-			require.True(t, result.Batches[0].Result.PrerequisiteMutation)
+			require.True(t, result.Batches[0].Result.ListCreationDispatched)
 			require.Equal(t, tc.create.OK, result.Batches[0].Result.OK)
 			if create.OK {
 				require.NotNil(t, result.Batches[1].Result)
 				require.Equal(t, tc.deleteOK, result.Batches[1].Result.OK)
-				require.Equal(t, []api.WAFListItem{old, unavailable}, result.Batches[0].Result.Returned.Items)
-				require.Equal(t, []api.WAFListItem{returnedItem}, result.Batches[0].Result.ReturnedItems)
+				require.Equal(t, []api.WAFListItem{old, unavailable}, result.Batches[0].Result.ReturnedManaged.Items)
+				require.Equal(t, []api.WAFListItem{old, unavailable, returnedItem}, result.Batches[0].Result.ReturnedAllItems)
 			} else {
 				require.Nil(t, result.Batches[1].Result)
 			}
@@ -136,7 +136,7 @@ func TestFinalWAFResultOwnsCleanupEvidence(t *testing.T) {
 	cleanup := api.WAFCleanupResult{
 		Code:   api.WAFListCleanupUpdating,
 		Before: &api.WAFSnapshot{Exists: true, Cached: true, Items: input},
-		Stages: []api.WAFCleanupStage{{WholeList: false, Items: input, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchAccepted, Returned: &api.WAFSnapshot{Cached: false, Exists: true, Items: input}, ReturnedItems: input}}},
+		Stages: []api.WAFCleanupStage{{WholeList: false, Items: input, Result: api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchAccepted, ReturnedManaged: &api.WAFSnapshot{Cached: false, Exists: true, Items: input}, ReturnedAllItems: input}}},
 	}
 	h.mockHandle.EXPECT().FinalCleanWAFList(ctx, p, list, "", gomock.Any(), api.CleanupAllowAsync).Return(cleanup)
 	result := s.FinalClearWAFList(ctx, p, list, "", map[ipnet.Family]bool{ipnet.IP4: true}, api.CleanupAllowAsync)
@@ -146,8 +146,8 @@ func TestFinalWAFResultOwnsCleanupEvidence(t *testing.T) {
 	require.Equal(t, item, result.Before.Items[0])
 	require.Equal(t, item, result.Cleanup.Before.Items[0])
 	require.Equal(t, item, result.Cleanup.Stages[0].Items[0])
-	require.Equal(t, item, result.Cleanup.Stages[0].Result.Returned.Items[0])
-	require.Equal(t, item, result.Cleanup.Stages[0].Result.ReturnedItems[0])
+	require.Equal(t, item, result.Cleanup.Stages[0].Result.ReturnedManaged.Items[0])
+	require.Equal(t, item, result.Cleanup.Stages[0].Result.ReturnedAllItems[0])
 	require.Equal(t, api.WAFBatchAccepted, result.Cleanup.Stages[0].Result.Status)
 	require.Empty(t, result.Batches)
 }
@@ -173,7 +173,7 @@ func TestWAFResultEmptyDeleteBatch(t *testing.T) {
 				Return(wafBatchResultForTest(createOK)).After(read.Call)
 			if createOK {
 				h.mockHandle.EXPECT().DeleteWAFListItems(ctx, p, list, "", []api.ID{}).
-					Return(api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchNoEffect, Returned: nil, ReturnedItems: nil}).After(create)
+					Return(api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchNoEffect, ReturnedManaged: nil, ReturnedAllItems: nil}).After(create)
 			}
 			result := s.SetWAFList(ctx, p, list, "", map[ipnet.Family]setter.WAFTargets{ipnet.IP4: setter.NewAvailableWAFTargets([]netip.Prefix{target})}, "")
 			require.NotNil(t, result.Before)

@@ -36,7 +36,7 @@ func notificationWAFCleanup(code setter.ResponseCode, whole bool) setter.WAFResu
 			items = []api.WAFListItem{notificationWAFItem("cleanup", "192.0.2.1/32")}
 			result.Cleanup.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: items}
 		}
-		result.Cleanup.Stages = []api.WAFCleanupStage{{WholeList: whole, Items: items, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: code != setter.ResponseFailed, Status: status, Returned: nil, ReturnedItems: nil}}}
+		result.Cleanup.Stages = []api.WAFCleanupStage{{WholeList: whole, Items: items, Result: api.WAFBatchResult{ListCreationDispatched: false, OK: code != setter.ResponseFailed, Status: status, ReturnedManaged: nil, ReturnedAllItems: nil}}}
 	}
 	result.Before = result.Cleanup.Before
 	return result
@@ -48,52 +48,58 @@ func notificationContentScenarios() []notificationScenario {
 	scenarios := make([]notificationScenario, 0, 26)
 	for _, cached := range []bool{false, true} {
 		for _, shape := range [][3]int{{0, 0, 0}, {0, 0, 1}, {0, 0, 2}, {0, 0, 3}, {0, 1, 0}, {0, 2, 0}, {0, 3, 0}, {0, 1, 1}, {1, 1, 1}, {2, 1, 1}, {3, 2, 3}, {1, 3, 2}, {3, 0, 0}} {
-			old := make([]string, 0, shape[0]+shape[1])
-			targets := make([]string, 0, shape[0]+shape[2])
-			satisfied := make([]netip.Addr, 0, shape[0])
-			removed := make([]string, 0, shape[1])
-			added := make([]string, 0, shape[2])
-			for i := range shape[0] {
-				value := fmt.Sprintf("192.0.2.%d", 10+i)
-				old = append(old, value)
-				targets = append(targets, value)
-				satisfied = append(satisfied, netip.MustParseAddr(value))
-			}
-			for i := range shape[1] {
-				value := fmt.Sprintf("192.0.2.%d", 30+i)
-				old = append(old, value)
-				removed = append(removed, value)
-			}
-			for i := range shape[2] {
-				value := fmt.Sprintf("192.0.2.%d", 50+i)
-				targets = append(targets, value)
-				added = append(added, value)
-			}
-			before := notificationSnapshot(old...)
-			before.Cached = cached
-			var operations []setter.DNSOperation
-			for i := range min(len(removed), len(added)) {
-				operations = append(operations, notificationOperation(api.RecordUpdate, setter.DNSOperationCompleted, api.ID("record-"+removed[i]), added[i], api.MembershipManaged))
-			}
-			for i := min(len(removed), len(added)); i < len(added); i++ {
-				operations = append(operations, notificationOperation(api.RecordCreate, setter.DNSOperationCompleted, api.ID("new-"+added[i]), added[i], api.MembershipManaged))
-			}
-			for i := min(len(removed), len(added)); i < len(removed); i++ {
-				operations = append(operations, notificationOperation(api.RecordDelete, setter.DNSOperationCompleted, api.ID("record-"+removed[i]), removed[i], api.MembershipUnknown))
-			}
-			code := setter.ResponseUpdated
-			if len(operations) == 0 {
-				code = setter.ResponseNoop
-			}
-			raw := strings.Join(targets, ",")
-			if raw == "" {
-				raw = "empty"
-			}
-			//nolint:exhaustruct_v5 // Scenario options default to ordinary scheduled execution.
-			scenarios = append(scenarios, notificationScenario{name: fmt.Sprintf("content-r%d-d%d-a%d-cached-%t", shape[0], shape[1], shape[2], cached), targets: raw, rounds: []notificationRound{{results: []setter.DNSResult{notificationProgressResult(code, before, satisfied, operations...)}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}})
+			name := fmt.Sprintf("content-r%d-d%d-a%d-cached-%t", shape[0], shape[1], shape[2], cached)
+			scenarios = append(scenarios, notificationContentScenario(name, shape, cached))
 		}
 	}
 	return scenarios
+}
+
+// Build independent evidence from retained/removed/added counts; name is only a label.
+func notificationContentScenario(name string, shape [3]int, cached bool) notificationScenario {
+	old := make([]string, 0, shape[0]+shape[1])
+	targets := make([]string, 0, shape[0]+shape[2])
+	satisfied := make([]netip.Addr, 0, shape[0])
+	removed := make([]string, 0, shape[1])
+	added := make([]string, 0, shape[2])
+	for i := range shape[0] {
+		value := fmt.Sprintf("192.0.2.%d", 10+i)
+		old = append(old, value)
+		targets = append(targets, value)
+		satisfied = append(satisfied, netip.MustParseAddr(value))
+	}
+	for i := range shape[1] {
+		value := fmt.Sprintf("192.0.2.%d", 30+i)
+		old = append(old, value)
+		removed = append(removed, value)
+	}
+	for i := range shape[2] {
+		value := fmt.Sprintf("192.0.2.%d", 50+i)
+		targets = append(targets, value)
+		added = append(added, value)
+	}
+	before := notificationSnapshot(old...)
+	before.Cached = cached
+	var operations []setter.DNSOperation
+	for i := range min(len(removed), len(added)) {
+		operations = append(operations, notificationOperation(api.RecordUpdate, setter.DNSOperationCompleted, api.ID("record-"+removed[i]), added[i], api.MembershipManaged))
+	}
+	for i := min(len(removed), len(added)); i < len(added); i++ {
+		operations = append(operations, notificationOperation(api.RecordCreate, setter.DNSOperationCompleted, api.ID("new-"+added[i]), added[i], api.MembershipManaged))
+	}
+	for i := min(len(removed), len(added)); i < len(removed); i++ {
+		operations = append(operations, notificationOperation(api.RecordDelete, setter.DNSOperationCompleted, api.ID("record-"+removed[i]), removed[i], api.MembershipUnknown))
+	}
+	code := setter.ResponseUpdated
+	if len(operations) == 0 {
+		code = setter.ResponseNoop
+	}
+	raw := strings.Join(targets, ",")
+	if raw == "" {
+		raw = "empty"
+	}
+	//nolint:exhaustruct_v5 // Scenario options default to ordinary scheduled execution.
+	return notificationScenario{name: name, targets: raw, rounds: []notificationRound{{results: []setter.DNSResult{notificationProgressResult(code, before, satisfied, operations...)}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}}
 }
 
 func notificationWAFItem(id, prefix string) api.WAFListItem {
@@ -101,7 +107,7 @@ func notificationWAFItem(id, prefix string) api.WAFListItem {
 }
 
 func notificationWAFReturned(items ...api.WAFListItem) *api.WAFBatchResult {
-	return &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: items}, ReturnedItems: items}
+	return &api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: &api.WAFSnapshot{Exists: true, Cached: false, Items: items}, ReturnedAllItems: items}
 }
 
 func notificationCurrentScenarios() []notificationScenario {
@@ -143,8 +149,8 @@ func notificationWAFCleanupScenarios() []notificationScenario {
 			exit = 1
 		}
 		result := setter.WAFResult{Code: code, Before: nil, Batches: nil, Cleanup: &api.WAFCleanupResult{Code: cleanupCode, Before: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item}}, Stages: []api.WAFCleanupStage{
-			{WholeList: true, Items: nil, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Status: api.WAFBatchUnconfirmed, Returned: nil, ReturnedItems: nil}},
-			{WholeList: false, Items: []api.WAFListItem{item}, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: status != api.WAFBatchUnconfirmed, Status: status, Returned: nil, ReturnedItems: nil}},
+			{WholeList: true, Items: nil, Result: api.WAFBatchResult{ListCreationDispatched: false, OK: false, Status: api.WAFBatchUnconfirmed, ReturnedManaged: nil, ReturnedAllItems: nil}},
+			{WholeList: false, Items: []api.WAFListItem{item}, Result: api.WAFBatchResult{ListCreationDispatched: false, OK: status != api.WAFBatchUnconfirmed, Status: status, ReturnedManaged: nil, ReturnedAllItems: nil}},
 		}}}
 		result.Before = result.Cleanup.Before
 		// Whole-list eligibility models the configured handle's ownership policy.
@@ -165,58 +171,69 @@ func notificationWAFCleanupScenarios() []notificationScenario {
 // observes an empty list, so no item deletion is needed.
 func notificationWAFEmptyFallback() setter.WAFResult {
 	before := &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}
-	return setter.WAFResult{Code: setter.ResponseNoop, Before: before, Batches: nil, Cleanup: &api.WAFCleanupResult{Code: api.WAFListCleanupNoop, Before: before, Stages: []api.WAFCleanupStage{{WholeList: true, Items: nil, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Status: api.WAFBatchUnconfirmed, Returned: nil, ReturnedItems: nil}}}}}
+	return setter.WAFResult{Code: setter.ResponseNoop, Before: before, Batches: nil, Cleanup: &api.WAFCleanupResult{Code: api.WAFListCleanupNoop, Before: before, Stages: []api.WAFCleanupStage{{WholeList: true, Items: nil, Result: api.WAFBatchResult{ListCreationDispatched: false, OK: false, Status: api.WAFBatchUnconfirmed, ReturnedManaged: nil, ReturnedAllItems: nil}}}}}
 }
 
 func notificationWAFEmptyFallbackScenarios() []notificationScenario {
 	scenarios := make([]notificationScenario, 0, 3)
-	for _, name := range []string{"once", "shutdown", "scheduling-failure"} {
+	for _, tc := range []struct {
+		name                    string
+		once, schedulingFailure bool
+		kinds                   []notifier.Kind
+		exit                    int
+	}{
+		{"once", true, false, []notifier.Kind{notifier.KindCleanup}, 0},
+		{"shutdown", false, false, []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}, 0},
+		{"scheduling-failure", false, true, []notifier.Kind{notifier.KindStartup, notifier.KindSchedulingFailure}, 1},
+	} {
 		result := notificationWAFEmptyFallback()
-		once, schedulingFailure := name == "once", name == "scheduling-failure"
-		kinds := []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}
-		exit := 0
-		if once {
-			kinds = []notifier.Kind{notifier.KindCleanup}
-		}
-		if schedulingFailure {
-			kinds[1], exit = notifier.KindSchedulingFailure, 1
-		}
 		//nolint:exhaustruct_v5 // Only cleanup, ownership and lifecycle options vary.
-		scenarios = append(scenarios, notificationScenario{name: "waf-cleanup-empty-fallback-" + name, wholeWAF: true, families: []ipnet.Family{ipnet.IP4, ipnet.IP6}, once: once, deferred: !once, schedulingFailure: schedulingFailure, rounds: []notificationRound{{}}, cleanup: true, cleanupResults: []setter.DNSResult{notificationNoop(notificationSnapshot()), notificationNoop(notificationSnapshot())}, wafCleanup: setter.ResponseNoop, wafCleanupResult: &result, wantKinds: kinds, wantExit: exit})
+		scenarios = append(scenarios, notificationScenario{name: "waf-cleanup-empty-fallback-" + tc.name, wholeWAF: true, families: []ipnet.Family{ipnet.IP4, ipnet.IP6}, once: tc.once, deferred: !tc.once, schedulingFailure: tc.schedulingFailure, rounds: []notificationRound{{}}, cleanup: true, cleanupResults: []setter.DNSResult{notificationNoop(notificationSnapshot()), notificationNoop(notificationSnapshot())}, wafCleanup: setter.ResponseNoop, wafCleanupResult: &result, wantKinds: tc.kinds, wantExit: tc.exit, wantWAFCleanupNotification: true})
 	}
 	return scenarios
 }
 
 func TestNotificationCleanupGuardEmptyFallback(t *testing.T) {
 	t.Parallel()
-	for _, variant := range []string{"fresh-empty", "cached", "missing", "nonempty", "absent-list", "completed", "accepted", "unattempted", "item-stage"} {
-		t.Run(variant, func(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		mutate      func(*setter.WAFResult)
+		wantProblem bool
+	}{
+		{name: "fresh-empty", mutate: nil, wantProblem: false},
+		{name: "cached", mutate: func(result *setter.WAFResult) {
+			result.Cleanup.Before.Cached = true
+		}, wantProblem: true},
+		{name: "missing", mutate: func(result *setter.WAFResult) {
+			result.Cleanup.Before = nil
+		}, wantProblem: true},
+		{name: "nonempty", mutate: func(result *setter.WAFResult) {
+			result.Cleanup.Before.Items = []api.WAFListItem{notificationWAFItem("old", "192.0.2.1/32")}
+		}, wantProblem: true},
+		{name: "absent-list", mutate: func(result *setter.WAFResult) {
+			result.Cleanup.Before.Exists = false
+		}, wantProblem: true},
+		{name: "completed", mutate: func(result *setter.WAFResult) {
+			result.Cleanup.Stages[0].Result.Status, result.Cleanup.Stages[0].Result.OK = api.WAFBatchCompleted, true
+		}, wantProblem: true},
+		{name: "accepted", mutate: func(result *setter.WAFResult) {
+			result.Cleanup.Stages[0].Result.Status, result.Cleanup.Stages[0].Result.OK = api.WAFBatchAccepted, true
+		}, wantProblem: true},
+		{name: "unattempted", mutate: func(result *setter.WAFResult) {
+			result.Cleanup.Stages[0].Result.Status = api.WAFBatchNoEffect
+		}, wantProblem: true},
+		{name: "item-stage", mutate: func(result *setter.WAFResult) {
+			result.Cleanup.Stages[0].WholeList = false
+		}, wantProblem: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			result := notificationWAFEmptyFallback()
-			switch variant {
-			case "cached":
-				result.Cleanup.Before.Cached = true
-			case "missing":
-				result.Cleanup.Before = nil
-			case "nonempty":
-				result.Cleanup.Before.Items = []api.WAFListItem{notificationWAFItem("old", "192.0.2.1/32")}
-			case "absent-list":
-				result.Cleanup.Before.Exists = false
-			case "completed":
-				result.Cleanup.Stages[0].Result.Status, result.Cleanup.Stages[0].Result.OK = api.WAFBatchCompleted, true
-			case "accepted":
-				result.Cleanup.Stages[0].Result.Status, result.Cleanup.Stages[0].Result.OK = api.WAFBatchAccepted, true
-			case "unattempted":
-				result.Cleanup.Stages[0].Result.Status = api.WAFBatchNoEffect
-			case "item-stage":
-				result.Cleanup.Stages[0].WholeList = false
+			if tc.mutate != nil {
+				tc.mutate(&result)
 			}
 			problem := notificationCleanupProblem(result, map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}, true, api.CleanupWait)
-			if variant == "fresh-empty" {
-				require.Empty(t, problem)
-			} else {
-				require.NotEmpty(t, problem)
-			}
+			require.Equal(t, tc.wantProblem, problem != "", problem)
 		})
 	}
 }
@@ -245,13 +262,13 @@ func notificationWAFScenarios() []notificationScenario {
 	}
 	for _, status := range []api.WAFBatchStatus{api.WAFBatchNoEffect, api.WAFBatchUnconfirmed, api.WAFBatchCompleted} {
 		failed := create
-		failed.Result = &api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Status: status, Returned: nil, ReturnedItems: nil}
+		failed.Result = &api.WAFBatchResult{ListCreationDispatched: false, OK: false, Status: status, ReturnedManaged: nil, ReturnedAllItems: nil}
 		unvisited := remove
 		unvisited.Result = nil
 		add(fmt.Sprintf("waf-create-failure-%d", status), setter.WAFResult{Code: setter.ResponseFailed, Before: before, Batches: []setter.WAFBatch{failed, unvisited}, Cleanup: nil})
 	}
 	failedDelete := remove
-	failedDelete.Result = &api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Status: api.WAFBatchUnconfirmed, Returned: nil, ReturnedItems: nil}
+	failedDelete.Result = &api.WAFBatchResult{ListCreationDispatched: false, OK: false, Status: api.WAFBatchUnconfirmed, ReturnedManaged: nil, ReturnedAllItems: nil}
 	add("waf-delete-batch-unconfirmed", setter.WAFResult{Code: setter.ResponseFailed, Before: before, Batches: []setter.WAFBatch{create, failedDelete}, Cleanup: nil})
 	add("waf-unknown-input", setter.WAFResult{Code: setter.ResponseFailed, Before: nil, Batches: nil, Cleanup: nil})
 	add("waf-unavailable-family-current", setter.WAFResult{Code: setter.ResponseNoop, Before: &api.WAFSnapshot{Exists: true, Cached: true, Items: []api.WAFListItem{cover, six}}, Batches: nil, Cleanup: nil})
@@ -274,7 +291,7 @@ func notificationWAFScenarios() []notificationScenario {
 	outside.Comment = "outside-selector"
 	anomalousDelete := remove
 	anomalousDelete.Result = notificationWAFReturned()
-	anomalousDelete.Result.ReturnedItems = []api.WAFListItem{outside}
+	anomalousDelete.Result.ReturnedAllItems = []api.WAFListItem{outside}
 	add("waf-created-item-leaves-ownership", setter.WAFResult{Code: setter.ResponseUpdated, Before: before, Batches: []setter.WAFBatch{create, anomalousDelete}, Cleanup: nil})
 	scenarios[len(scenarios)-1].filtered = true
 	retained := cover
@@ -429,35 +446,41 @@ func TestNotificationScenarioOwnershipAndCleanupContracts(t *testing.T) {
 
 func TestNotificationCleanupGuardRejectsContradictions(t *testing.T) {
 	t.Parallel()
-	for _, name := range []string{"partial-whole-list", "accepted-whole-list", "unattempted-whole-list", "completed-item-async", "accepted-item-wait", "item-outside-family", "missing-item-input", "wrong-result-projection"} {
-		t.Run(name, func(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		whole  bool
+		code   setter.ResponseCode
+		mode   api.CleanupMode
+		mutate func(*setter.WAFResult, map[ipnet.Family]bool)
+	}{
+		{name: "partial-whole-list", whole: true, code: setter.ResponseUpdated, mode: api.CleanupWait, mutate: func(_ *setter.WAFResult, families map[ipnet.Family]bool) {
+			delete(families, ipnet.IP6)
+		}},
+		{name: "accepted-whole-list", whole: true, code: setter.ResponseUpdating, mode: api.CleanupAllowAsync, mutate: nil},
+		{name: "unattempted-whole-list", whole: true, code: setter.ResponseFailed, mode: api.CleanupWait, mutate: func(result *setter.WAFResult, _ map[ipnet.Family]bool) {
+			result.Cleanup.Stages[0].Result.Status = api.WAFBatchNoEffect
+		}},
+		{name: "completed-item-async", whole: false, code: setter.ResponseUpdated, mode: api.CleanupAllowAsync, mutate: nil},
+		{name: "accepted-item-wait", whole: false, code: setter.ResponseUpdating, mode: api.CleanupWait, mutate: nil},
+		{name: "item-outside-family", whole: false, code: setter.ResponseUpdated, mode: api.CleanupWait, mutate: func(_ *setter.WAFResult, families map[ipnet.Family]bool) {
+			delete(families, ipnet.IP4)
+		}},
+		{name: "missing-item-input", whole: false, code: setter.ResponseUpdated, mode: api.CleanupWait, mutate: func(result *setter.WAFResult, _ map[ipnet.Family]bool) {
+			result.Before = nil
+			result.Cleanup.Before = nil
+		}},
+		{name: "wrong-result-projection", whole: false, code: setter.ResponseUpdated, mode: api.CleanupWait, mutate: func(result *setter.WAFResult, _ map[ipnet.Family]bool) {
+			result.Code = setter.ResponseFailed
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			families := map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}
-			mode := api.CleanupWait
-			whole := strings.Contains(name, "whole-list")
-			result := notificationWAFCleanup(setter.ResponseUpdated, whole)
-			switch name {
-			case "partial-whole-list":
-				delete(families, ipnet.IP6)
-			case "accepted-whole-list":
-				result = notificationWAFCleanup(setter.ResponseUpdating, true)
-				mode = api.CleanupAllowAsync
-			case "unattempted-whole-list":
-				result = notificationWAFCleanup(setter.ResponseFailed, true)
-				result.Cleanup.Stages[0].Result.Status = api.WAFBatchNoEffect
-			case "completed-item-async":
-				mode = api.CleanupAllowAsync
-			case "accepted-item-wait":
-				result = notificationWAFCleanup(setter.ResponseUpdating, false)
-			case "item-outside-family":
-				delete(families, ipnet.IP4)
-			case "missing-item-input":
-				result.Before = nil
-				result.Cleanup.Before = nil
-			case "wrong-result-projection":
-				result.Code = setter.ResponseFailed
+			result := notificationWAFCleanup(tc.code, tc.whole)
+			if tc.mutate != nil {
+				tc.mutate(&result, families)
 			}
-			require.NotEmpty(t, notificationCleanupProblem(result, families, true, mode))
+			require.NotEmpty(t, notificationCleanupProblem(result, families, true, tc.mode))
 		})
 	}
 }
@@ -492,7 +515,7 @@ func notificationWAFWordingScenarios() []notificationScenario {
 		}
 		create := setter.WAFBatch{Create: creates, Delete: nil, Result: notificationWAFReturned(slices.Concat(old, added)...)}
 		remove := setter.WAFBatch{Create: nil, Delete: old, Result: nil}
-		failed := &api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Status: tc.status, Returned: nil, ReturnedItems: nil}
+		failed := &api.WAFBatchResult{ListCreationDispatched: false, OK: false, Status: tc.status, ReturnedManaged: nil, ReturnedAllItems: nil}
 		if tc.failCreate {
 			create.Result = failed
 		} else {
@@ -515,7 +538,7 @@ func notificationWAFWordingScenarios() []notificationScenario {
 			items = append(items, notificationWAFItem(fmt.Sprintf("cleanup-%d", i), fmt.Sprintf("192.0.2.%d/32", i+1)))
 		}
 		before := &api.WAFSnapshot{Exists: true, Cached: tc.cached, Items: items}
-		result := setter.WAFResult{Code: setter.ResponseUpdating, Before: before, Batches: nil, Cleanup: &api.WAFCleanupResult{Code: api.WAFListCleanupUpdating, Before: before, Stages: []api.WAFCleanupStage{{WholeList: false, Items: items, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchAccepted, Returned: nil, ReturnedItems: nil}}}}}
+		result := setter.WAFResult{Code: setter.ResponseUpdating, Before: before, Batches: nil, Cleanup: &api.WAFCleanupResult{Code: api.WAFListCleanupUpdating, Before: before, Stages: []api.WAFCleanupStage{{WholeList: false, Items: items, Result: api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchAccepted, ReturnedManaged: nil, ReturnedAllItems: nil}}}}}
 		//nolint:exhaustruct_v5 // Scheduled shutdown permits accepted item cleanup without whole-list ownership.
 		scenarios = append(scenarios, notificationScenario{name: tc.name, deferred: true, rounds: []notificationRound{{}}, cleanup: true, cleanupResults: []setter.DNSResult{notificationNoop(notificationSnapshot())}, wafCleanup: setter.ResponseUpdating, wafCleanupResult: &result, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}})
 	}

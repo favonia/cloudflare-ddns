@@ -21,6 +21,6 @@ func submitNotification(ctx context.Context, ppfmt pp.PP, nt notifier.Notifier,
 	if envelope.IsEmpty() {
 		return
 	}
-	state.Submitted(envelope)
+	state.RecordSubmission(envelope)
 	nt.Send(ctx, ppfmt, envelope.Notification())
 }

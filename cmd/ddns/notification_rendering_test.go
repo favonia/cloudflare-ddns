@@ -32,33 +32,39 @@ import (
 // These fixtures supply setter evidence through its public contract. The actual
 // updater, scheduled loop, composition and printer remain in the exercised path.
 type notificationRound struct {
-	waf         *setter.WAFResult
-	results     []setter.DNSResult
-	targets     string
-	targets6    string
-	unavailable map[ipnet.Family]bool
-	cancel      bool
+	suppressNotification bool
+	waf                  *setter.WAFResult
+	results              []setter.DNSResult
+	targets              string
+	targets6             string
+	unavailable          map[ipnet.Family]bool
+	cancel               bool
 }
+
+// notificationScenario keeps behavior and assertions with each case. The name
+// labels subtests and capture metadata; renaming it preserves setup and checks.
 type notificationScenario struct {
-	wholeWAF          bool
-	waf               bool
-	filtered          bool
-	wafCleanupResult  *setter.WAFResult
-	name              string
-	rounds            []notificationRound
-	targets           string
-	targets6          string
-	dnsFiltered       bool
-	wafFiltered       bool
-	deferred          bool
-	once              bool
-	cleanup           bool
-	cleanupResults    []setter.DNSResult
-	wafCleanup        setter.ResponseCode
-	schedulingFailure bool
-	families          []ipnet.Family
-	wantKinds         []notifier.Kind
-	wantExit          int
+	assertNotifications        func(*testing.T, []notificationEvent)
+	wantWAFCleanupNotification bool
+	wholeWAF                   bool
+	waf                        bool
+	filtered                   bool
+	wafCleanupResult           *setter.WAFResult
+	name                       string
+	rounds                     []notificationRound
+	targets                    string
+	targets6                   string
+	dnsFiltered                bool
+	wafFiltered                bool
+	deferred                   bool
+	once                       bool
+	cleanup                    bool
+	cleanupResults             []setter.DNSResult
+	wafCleanup                 setter.ResponseCode
+	schedulingFailure          bool
+	families                   []ipnet.Family
+	wantKinds                  []notifier.Kind
+	wantExit                   int
 }
 type notificationEvent struct {
 	Channel string        `json:"channel"`
@@ -251,16 +257,34 @@ func notificationScenarios() []notificationScenario {
 	scenarios := make([]notificationScenario, 0, 28)
 	//nolint:exhaustruct_v5 // Matrix fixtures specify relevant variations; omitted options use their zero defaults.
 	scenarios = append(scenarios, []notificationScenario{
-		{name: "immediate-startup-noop", rounds: []notificationRound{{results: []setter.DNSResult{noop}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}},
+		{name: "immediate-startup-noop", assertNotifications: func(t *testing.T, notifications []notificationEvent) {
+			t.Helper()
+			require.Contains(t, notifications[0].Text, "192.0.2.1")
+			require.Contains(t, notifications[0].Text, "host0.example")
+		}, rounds: []notificationRound{{results: []setter.DNSResult{noop}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}},
 		{name: "immediate-startup-creation", rounds: []notificationRound{{results: []setter.DNSResult{created}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}},
 		{name: "immediate-startup-clearing", targets: "empty", rounds: []notificationRound{{results: []setter.DNSResult{cleared}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}},
 		{name: "immediate-startup-mixed-success-failure", rounds: []notificationRound{{results: []setter.DNSResult{created, failed}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
 		{name: "immediate-startup-detection-failure", rounds: []notificationRound{{unavailable: map[ipnet.Family]bool{ipnet.IP4: true}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
 		{name: "immediate-startup-interruption", rounds: []notificationRound{{results: []setter.DNSResult{failed}, cancel: true}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
-		{name: "deferred-startup-A-then-B", deferred: true, families: []ipnet.Family{ipnet.IP4, ipnet.IP6}, rounds: []notificationRound{{}, {results: []setter.DNSResult{noop}, unavailable: map[ipnet.Family]bool{ipnet.IP6: true}}, {results: []setter.DNSResult{noop, notificationNoop(notificationSnapshot("2001:db8::1"), "2001:db8::1")}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindUpdateFailure, notifier.KindStateObservation, notifier.KindShutdown}},
-		{name: "ordinary-silence", rounds: []notificationRound{{results: []setter.DNSResult{noop}}, {results: []setter.DNSResult{noop}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}},
-		{name: "grouped-updates", rounds: []notificationRound{{results: []setter.DNSResult{created, groupedSecond}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}},
-		{name: "distinct-previous-sets", rounds: []notificationRound{{results: []setter.DNSResult{created, notificationResult(setter.ResponseUpdated, fresh, api.RecordUpdate, api.MutationCompleted, "192.0.2.1")}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}},
+		{name: "deferred-startup-A-then-B", assertNotifications: func(t *testing.T, notifications []notificationEvent) {
+			t.Helper()
+			require.Len(t, strings.Split(notifications[0].Text, "\n\n"), 1)
+			require.Contains(t, notifications[1].Text, "IPv4")
+			require.NotContains(t, notifications[2].Text, "IPv4")
+			require.Contains(t, notifications[2].Text, "IPv6")
+		}, deferred: true, families: []ipnet.Family{ipnet.IP4, ipnet.IP6}, rounds: []notificationRound{{}, {results: []setter.DNSResult{noop}, unavailable: map[ipnet.Family]bool{ipnet.IP6: true}}, {results: []setter.DNSResult{noop, notificationNoop(notificationSnapshot("2001:db8::1"), "2001:db8::1")}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindUpdateFailure, notifier.KindStateObservation, notifier.KindShutdown}},
+		{name: "ordinary-silence", rounds: []notificationRound{{results: []setter.DNSResult{noop}}, {suppressNotification: true, results: []setter.DNSResult{noop}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}},
+		{name: "grouped-updates", assertNotifications: func(t *testing.T, notifications []notificationEvent) {
+			t.Helper()
+			require.Len(t, strings.Split(notifications[0].Text, "\n\n"), 2)
+			require.Contains(t, notifications[0].Text, "host0.example")
+			require.Contains(t, notifications[0].Text, "host1.example")
+		}, rounds: []notificationRound{{results: []setter.DNSResult{created, groupedSecond}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}},
+		{name: "distinct-previous-sets", assertNotifications: func(t *testing.T, notifications []notificationEvent) {
+			t.Helper()
+			require.Len(t, strings.Split(notifications[0].Text, "\n\n"), 3)
+		}, rounds: []notificationRound{{results: []setter.DNSResult{created, notificationResult(setter.ResponseUpdated, fresh, api.RecordUpdate, api.MutationCompleted, "192.0.2.1")}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}},
 		{name: "multi-address-updates", targets: "192.0.2.1,192.0.2.2", rounds: []notificationRound{{results: []setter.DNSResult{multi}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}},
 		{name: "unknown-before", rounds: []notificationRound{{results: []setter.DNSResult{{Code: setter.ResponseFailed, Before: nil, Progress: nil, Effects: nil}}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
 		{name: "completed-returned-outside-managed-scope", filtered: true, targets: "192.0.2.2", rounds: []notificationRound{{results: []setter.DNSResult{outside}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindShutdown}},
@@ -287,7 +311,11 @@ func notificationScenarios() []notificationScenario {
 		targets string
 	}{{"noop", notificationNoop(fresh, "192.0.2.2"), notifier.KindStateObservation, "192.0.2.2"}, {"success", notificationResult(setter.ResponseUpdated, fresh, api.RecordUpdate, api.MutationCompleted, "192.0.2.1"), notifier.KindUpdate, ""}, {"failure", failed, notifier.KindUpdateFailure, ""}} {
 		//nolint:exhaustruct_v5 // Each sequence inherits ordinary scheduled defaults.
-		scenarios = append(scenarios, notificationScenario{name: "unexplained-observation-then-" + ending.name, rounds: []notificationRound{{results: []setter.DNSResult{noop}}, {results: []setter.DNSResult{ending.result}, targets: ending.targets}}, wantKinds: []notifier.Kind{notifier.KindStartup, ending.kind, notifier.KindShutdown}})
+		scenarios = append(scenarios, notificationScenario{name: "unexplained-observation-then-" + ending.name, assertNotifications: func(t *testing.T, notifications []notificationEvent) {
+			t.Helper()
+			require.Contains(t, notifications[1].Text, "192.0.2.2")
+			require.Contains(t, notifications[1].Text, "host0.example")
+		}, rounds: []notificationRound{{results: []setter.DNSResult{noop}}, {results: []setter.DNSResult{ending.result}, targets: ending.targets}}, wantKinds: []notifier.Kind{notifier.KindStartup, ending.kind, notifier.KindShutdown}})
 	}
 	return append(append(append(scenarios, notificationProgressScenarios()...), notificationCurrentScenarios()...), notificationFilteredScenarios()...)
 }
@@ -304,10 +332,7 @@ func notificationProgressScenarios() []notificationScenario {
 	leftovers := notificationSnapshot("192.0.2.1", "192.0.2.5", "192.0.2.6")
 	deleteUncertain := notificationOperation(api.RecordDelete, setter.DNSOperationUnconfirmed, leftovers.Records[1].ID, "192.0.2.5", api.MembershipUnknown)
 	deleteUnvisited := notificationOperation(api.RecordDelete, setter.DNSOperationNotAttempted, leftovers.Records[2].ID, "192.0.2.6", api.MembershipUnknown)
-	finalBefore := notificationSnapshot("192.0.2.1", "192.0.2.5")
-	finalResult := notificationProgressResult(setter.ResponseFailed, finalBefore, nil,
-		notificationOperation(api.RecordDelete, setter.DNSOperationUnconfirmed, finalBefore.Records[0].ID, "192.0.2.1", api.MembershipUnknown),
-		notificationOperation(api.RecordDelete, setter.DNSOperationCompleted, finalBefore.Records[1].ID, "192.0.2.5", api.MembershipUnknown))
+
 	duplicates := &setter.DNSSnapshot{Cached: false, Records: []api.RecordFact{
 		{ID: "duplicate-1", IP: netip.MustParseAddr("192.0.2.1")},
 		{ID: "duplicate-2", IP: netip.MustParseAddr("192.0.2.1")},
@@ -323,14 +348,60 @@ func notificationProgressScenarios() []notificationScenario {
 	cachedEmpty.Cached = true
 	//nolint:exhaustruct_v5 // Matrix options default to the ordinary scheduled lifecycle.
 	return []notificationScenario{
-		{name: "multi-ip-stopped-suffix", targets: "192.0.2.2,192.0.2.3,192.0.2.4", rounds: []notificationRound{{results: []setter.DNSResult{notificationProgressResult(setter.ResponseFailed, old, nil, completed, uncertain, unvisited)}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
-		{name: "multi-ip-prerequisite", targets: "192.0.2.2,192.0.2.3,192.0.2.4", rounds: []notificationRound{{results: []setter.DNSResult{notificationProgressResult(setter.ResponseFailed, old, nil, completed, blocked, unvisited)}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
-		{name: "multi-ip-already-satisfied", targets: "192.0.2.2,192.0.2.3,192.0.2.4", rounds: []notificationRound{{results: []setter.DNSResult{notificationProgressResult(setter.ResponseFailed, already, []netip.Addr{netip.MustParseAddr("192.0.2.4")}, completed, uncertain)}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
-		{name: "multi-ip-delete-stage", targets: "192.0.2.2", rounds: []notificationRound{{results: []setter.DNSResult{notificationProgressResult(setter.ResponseFailed, leftovers, nil, completed, deleteUncertain, deleteUnvisited)}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
-		{name: "multi-ip-final-delete", deferred: true, rounds: []notificationRound{{}}, cleanup: true, cleanupResults: []setter.DNSResult{finalResult}, wafCleanup: setter.ResponseNoop, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindCleanupFailure}, wantExit: 1},
-		{name: "cached-noop-context", deferred: true, rounds: []notificationRound{{}, {results: []setter.DNSResult{notificationNoop(cached, "192.0.2.1")}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindStateObservation, notifier.KindShutdown}},
-		{name: "duplicate-address-deletion-progress", targets: "empty", rounds: []notificationRound{{results: []setter.DNSResult{duplicateResult}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
-		{name: "cached-empty-noop-context", targets: "empty", deferred: true, rounds: []notificationRound{{}, {results: []setter.DNSResult{notificationNoop(cachedEmpty)}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindStateObservation, notifier.KindShutdown}},
+		{name: "multi-ip-stopped-suffix", assertNotifications: func(t *testing.T, notifications []notificationEvent) {
+			t.Helper()
+			text := notifications[0].Text
+			for _, fact := range []string{"Update confirmed:", "192.0.2.1 → 192.0.2.2", "Addition unconfirmed:", "192.0.2.3", "Addition not attempted:", "192.0.2.4"} {
+				require.Contains(t, text, fact)
+			}
+		}, targets: "192.0.2.2,192.0.2.3,192.0.2.4", rounds: []notificationRound{{results: []setter.DNSResult{notificationProgressResult(setter.ResponseFailed, old, nil, completed, uncertain, unvisited)}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
+		{name: "multi-ip-prerequisite", assertNotifications: func(t *testing.T, notifications []notificationEvent) {
+			t.Helper()
+			text := notifications[0].Text
+			for _, fact := range []string{"Update confirmed:", "Addition blocked:", "Addition not attempted:"} {
+				require.Contains(t, text, fact)
+			}
+		}, targets: "192.0.2.2,192.0.2.3,192.0.2.4", rounds: []notificationRound{{results: []setter.DNSResult{notificationProgressResult(setter.ResponseFailed, old, nil, completed, blocked, unvisited)}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
+		{name: "multi-ip-already-satisfied", assertNotifications: func(t *testing.T, notifications []notificationEvent) {
+			t.Helper()
+			text := notifications[0].Text
+			for _, fact := range []string{"Update confirmed:", "Addition unconfirmed:", "Unchanged: 192.0.2.4"} {
+				require.Contains(t, text, fact)
+			}
+			require.NotContains(t, text, "did not attempt to update to 192.0.2.4")
+		}, targets: "192.0.2.2,192.0.2.3,192.0.2.4", rounds: []notificationRound{{results: []setter.DNSResult{notificationProgressResult(setter.ResponseFailed, already, []netip.Addr{netip.MustParseAddr("192.0.2.4")}, completed, uncertain)}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
+		{name: "multi-ip-delete-stage", assertNotifications: func(t *testing.T, notifications []notificationEvent) {
+			t.Helper()
+			text := notifications[0].Text
+			for _, fact := range []string{"Update confirmed:", "Removal unconfirmed: 192.0.2.5", "Removal not attempted: 192.0.2.6"} {
+				require.Contains(t, text, fact)
+			}
+		}, targets: "192.0.2.2", rounds: []notificationRound{{results: []setter.DNSResult{notificationProgressResult(setter.ResponseFailed, leftovers, nil, completed, deleteUncertain, deleteUnvisited)}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
+		notificationFinalDeleteScenario(),
+		{name: "cached-noop-context", assertNotifications: func(t *testing.T, notifications []notificationEvent) {
+			t.Helper()
+			text := notifications[1].Text
+			for _, fact := range []string{"Current (cached):", "192.0.2.1"} {
+				require.Contains(t, text, fact)
+			}
+			require.NotContains(t, text, "currently:")
+		}, deferred: true, rounds: []notificationRound{{}, {results: []setter.DNSResult{notificationNoop(cached, "192.0.2.1")}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindStateObservation, notifier.KindShutdown}},
+		{name: "duplicate-address-deletion-progress", assertNotifications: func(t *testing.T, notifications []notificationEvent) {
+			t.Helper()
+			text := notifications[0].Text
+			for _, fact := range []string{"Removal confirmed:", "Removal unconfirmed:", "Removal not attempted:"} {
+				require.Contains(t, text, fact)
+			}
+			require.Equal(t, 3, strings.Count(text, "192.0.2.1 (1 record)"), "three distinct record removals retain distinct outcomes")
+		}, targets: "empty", rounds: []notificationRound{{results: []setter.DNSResult{duplicateResult}}}, wantKinds: []notifier.Kind{notifier.KindUpdateFailure, notifier.KindShutdown}},
+		{name: "cached-empty-noop-context", assertNotifications: func(t *testing.T, notifications []notificationEvent) {
+			t.Helper()
+			text := notifications[1].Text
+			for _, fact := range []string{"Current (cached):", "no addresses"} {
+				require.Contains(t, text, fact)
+			}
+			require.NotContains(t, text, "currently:")
+		}, targets: "empty", deferred: true, rounds: []notificationRound{{}, {results: []setter.DNSResult{notificationNoop(cachedEmpty)}}}, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindStateObservation, notifier.KindShutdown}},
 	}
 }
 
@@ -379,8 +450,8 @@ func renderNotificationScenario(t *testing.T, scenario notificationScenario, ver
 	}
 	//nolint:exhaustruct_v5 // Unused metadata options remain zero in evidence-only setter fixtures.
 	cfg := &config.UpdateConfig{HostID6: make(map[domain.Domain]hostid6.Set), Provider: make(map[ipnet.Family]provider.Provider), Domains: make(map[ipnet.Family][]domain.Domain), DefaultPrefixLen: map[ipnet.Family]int{ipnet.IP4: 32, ipnet.IP6: 128}, DetectionFilter: map[ipnet.Family]ipfilter.Filter{ipnet.IP4: ipfilter.KeepAll(), ipnet.IP6: ipfilter.KeepAll()}, DetectionTimeout: time.Second, UpdateTimeout: time.Second}
-	cfg.ManagedWAFListItemsFiltered = scenario.filtered || scenario.wafFiltered
-	cfg.ManagedRecordsFiltered = scenario.filtered || scenario.dnsFiltered
+	cfg.HasManagedWAFListItemsSelector = scenario.filtered || scenario.wafFiltered
+	cfg.HasManagedRecordsSelector = scenario.filtered || scenario.dnsFiltered
 	count := 1
 	for _, round := range scenario.rounds {
 		if len(round.results) > count && len(families) == 1 {
@@ -441,7 +512,7 @@ func renderNotificationScenario(t *testing.T, scenario notificationScenario, ver
 		require.Equal(t, expected.domain, d)
 		require.True(t, slices.Equal(expected.targets, targets), "actual requested targets in round %d: expected %v, got %v", round, expected.targets, targets)
 		result := scenario.rounds[round].results[index]
-		require.Empty(t, notificationDNSOwnershipProblem(result, cfg.ManagedRecordsFiltered))
+		require.Empty(t, notificationDNSOwnershipProblem(result, cfg.HasManagedRecordsSelector))
 		require.Empty(t, notificationEvidenceProblem(result, targets), "invalid setter evidence for round %d", round)
 		consumed[round]++
 		if scenario.rounds[round].cancel {
@@ -457,7 +528,7 @@ func renderNotificationScenario(t *testing.T, scenario notificationScenario, ver
 		require.NoError(t, ctx.Err())
 		require.Less(t, cleanupIndex, len(scenario.cleanupResults))
 		result := scenario.cleanupResults[cleanupIndex]
-		require.Empty(t, notificationDNSOwnershipProblem(result, cfg.ManagedRecordsFiltered))
+		require.Empty(t, notificationDNSOwnershipProblem(result, cfg.HasManagedRecordsSelector))
 		require.Empty(t, notificationEvidenceProblem(result, nil))
 		cleanupIndex++
 		return result
@@ -513,7 +584,7 @@ func renderNotificationScenario(t *testing.T, scenario notificationScenario, ver
 					managedFamilies[family] = true
 				}
 			}
-			require.Empty(t, notificationCleanupProblem(*result, managedFamilies, scenario.wholeWAF && !cfg.ManagedWAFListItemsFiltered, mode), scenario.name)
+			require.Empty(t, notificationCleanupProblem(*result, managedFamilies, scenario.wholeWAF && !cfg.HasManagedWAFListItemsSelector, mode), scenario.name)
 			s.EXPECT().FinalClearWAFList(gomock.Any(), gomock.Any(), cfg.WAFLists[0], gomock.Any(), managedFamilies, mode).Return(*result)
 		}
 	}
@@ -753,4 +824,19 @@ func notificationOperationProblem(operation setter.DNSOperation, before map[api.
 		return "operation address absent from targets"
 	}
 	return ""
+}
+
+func notificationFinalDeleteScenario() notificationScenario {
+	finalBefore := notificationSnapshot("192.0.2.1", "192.0.2.5")
+	finalResult := notificationProgressResult(setter.ResponseFailed, finalBefore, nil,
+		notificationOperation(api.RecordDelete, setter.DNSOperationUnconfirmed, finalBefore.Records[0].ID, "192.0.2.1", api.MembershipUnknown),
+		notificationOperation(api.RecordDelete, setter.DNSOperationCompleted, finalBefore.Records[1].ID, "192.0.2.5", api.MembershipUnknown))
+	//nolint:exhaustruct_v5 // Only final cleanup evidence and its expected notification are relevant.
+	return notificationScenario{name: "multi-ip-final-delete", assertNotifications: func(t *testing.T, notifications []notificationEvent) {
+		t.Helper()
+		text := notifications[1].Text
+		for _, fact := range []string{"Removal unconfirmed: 192.0.2.1", "Removal confirmed: 192.0.2.5"} {
+			require.Contains(t, text, fact)
+		}
+	}, deferred: true, rounds: []notificationRound{{}}, cleanup: true, cleanupResults: []setter.DNSResult{finalResult}, wafCleanup: setter.ResponseNoop, wantKinds: []notifier.Kind{notifier.KindStartup, notifier.KindCleanupFailure}, wantExit: 1}
 }

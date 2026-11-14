@@ -78,9 +78,11 @@ func snapshotRecords(rs []api.Record, cached bool) *DNSSnapshot {
 	return &DNSSnapshot{Cached: cached, Records: facts}
 }
 
-// admit records reached evidence without changing the plan's requested target or
-// deletion address. Effects retains the API shape, in particular addressless deletes.
-func (r *DNSResult) admit(index int, effect api.RecordMutation) bool {
+// recordMutation records reached evidence without changing the plan's requested
+// target or deletion address. Effects retains the API shape, in particular
+// addressless deletes. index must identify the planned operation that produced
+// effect; the operation must not have been recorded already.
+func (r *DNSResult) recordMutation(index int, effect api.RecordMutation) {
 	operation := &r.Progress.Operations[index]
 	switch effect.Status {
 	case api.MutationNoEffect:
@@ -97,5 +99,4 @@ func (r *DNSResult) admit(index int, effect api.RecordMutation) bool {
 	if effect.Status != api.MutationNoEffect {
 		r.Effects = append(r.Effects, effect)
 	}
-	return effect.Status == api.MutationCompleted
 }

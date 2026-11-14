@@ -82,8 +82,8 @@ type LifecycleConfig struct {
 type UpdateConfig struct {
 	// These reporting facts record explicit nonempty selectors, including match-all
 	// expressions. HandleConfig remains the owner of compiled selection machinery.
-	ManagedRecordsFiltered      bool
-	ManagedWAFListItemsFiltered bool
+	HasManagedRecordsSelector      bool
+	HasManagedWAFListItemsSelector bool
 	// Provider contains only managed families in the built config.
 	// Map absence means the family is out of scope for this updater.
 	Provider map[ipnet.Family]provider.Provider

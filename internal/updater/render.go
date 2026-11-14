@@ -46,7 +46,7 @@ func renderDNSBody(row dnsRow) ([]string, dnsDisclosure) {
 			label := "No " + row.family.Describe() + " update needed"
 			lines = append(lines, sourceLabel(label, row.beforeCached)+": "+renderAddresses(row.before))
 		} else {
-			lines = append(lines, renderDNSContext(row, false))
+			lines = append(lines, renderCurrentDNSContext(row))
 		}
 		disclosed = dnsDisclosure{addresses: slices.Clone(row.before), knownEmpty: len(row.before) == 0}
 	case row.code == setter.ResponseUpdated && row.evidence.deltaComplete:
@@ -80,7 +80,11 @@ func renderDNSBody(row dnsRow) ([]string, dnsDisclosure) {
 		lines = append(lines, progress...)
 		disclosed.addresses = represented
 		if !row.evidence.coveredBy(disclosed) && row.beforeKnown {
-			lines = append(lines, renderDNSContext(row, row.evidence.inputHistorical))
+			if row.evidence.inputHistorical {
+				lines = append(lines, renderHistoricalDNSContext(row))
+			} else {
+				lines = append(lines, renderCurrentDNSContext(row))
+			}
 			disclosed = dnsDisclosure{addresses: slices.Clone(row.before), knownEmpty: len(row.before) == 0}
 		}
 	}
@@ -257,14 +261,15 @@ func historicalInventory(noun string, values []string, cached, cleanup bool) str
 	return sourceLabel(noun+" "+when, cached) + ": " + englishValues(values)
 }
 
-func renderDNSContext(row dnsRow, historical bool) string {
+func renderHistoricalDNSContext(row dnsRow) string {
 	noun := "Addresses"
 	if row.filtered {
 		noun = "Managed addresses"
 	}
-	if historical {
-		return historicalInventory(noun, addressStrings(row.before), row.beforeCached, row.cleanup)
-	}
+	return historicalInventory(noun, addressStrings(row.before), row.beforeCached, row.cleanup)
+}
+
+func renderCurrentDNSContext(row dnsRow) string {
 	if row.filtered {
 		return sourceLabel("Current managed addresses", row.beforeCached) + ": " +
 			pp.EnglishJoinMapOrEmptyLabel(netip.Addr.String, row.before, "none")

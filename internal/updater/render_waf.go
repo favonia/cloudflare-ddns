@@ -75,13 +75,13 @@ func renderWAF(o wafOutcome) string {
 	}
 	switch {
 	case o.result.Code == setter.ResponseNoop:
-		lines = append(lines, renderWAFContext(o, content.observed, false, "")...)
+		lines = append(lines, renderWAFContext(o, content.observed, wafInventoryCurrent)...)
 		if content.observed == nil {
 			lines = append(lines, "No update needed")
 		}
 	case content.deltaKnown:
 		if before != nil && !before.Exists {
-			lines = append(lines, renderWAFContext(o, before, true, "")...)
+			lines = append(lines, renderWAFContext(o, before, wafInventoryBeforeOperation)...)
 		}
 		lines = append(lines, renderDelta(wafPrefixes(content.added), wafPrefixes(content.removed),
 			wafPrefixes(content.unchanged), cached)...)
@@ -95,12 +95,12 @@ func renderWAF(o wafOutcome) string {
 		afterItems := o.activeItems(content.observed)
 		pureAddition := len(content.added) > 0 && len(content.removed) == 0 && len(content.unchanged) == 0
 		if pureAddition && len(afterItems) != len(wafPrefixes(afterItems)) {
-			lines = append(lines, renderWAFContext(o, content.observed, false, "")...)
+			lines = append(lines, renderWAFContext(o, content.observed, wafInventoryCurrent)...)
 		} else {
 			lines = append(lines, completenessEnding(singular, plural,
 				len(content.added), len(content.removed), len(content.unchanged))...)
 			if len(content.added)+len(content.removed)+len(content.unchanged) == 0 {
-				lines = append(lines, renderWAFContext(o, content.observed, false, "")...)
+				lines = append(lines, renderWAFContext(o, content.observed, wafInventoryCurrent)...)
 			} else {
 				lines = append(lines, o.renderInactiveWAF(content)...)
 			}
@@ -109,14 +109,18 @@ func renderWAF(o wafOutcome) string {
 		lines = append(lines, o.renderWAFProgress(content, cached)...)
 		fullCleanup := o.acceptedFullCleanup(before)
 		if content.observed != nil {
-			timing := ""
+			timing := wafInventoryCurrent
 			if content.inputHistorical && content.observed.Exists &&
 				len(content.observed.Items) == 0 && o.hasCompletedAddition() {
-				timing = " after the addition"
+				timing = wafInventoryAfterAddition
 			}
-			lines = append(lines, renderWAFContext(o, content.observed, false, timing)...)
+			lines = append(lines, renderWAFContext(o, content.observed, timing)...)
 		} else if !fullCleanup {
-			lines = append(lines, renderWAFContext(o, before, content.inputHistorical, "")...)
+			timing := wafInventoryCurrent
+			if content.inputHistorical {
+				timing = wafInventoryBeforeOperation
+			}
+			lines = append(lines, renderWAFContext(o, before, timing)...)
 		}
 	}
 	if len(lines) == 0 {
@@ -194,12 +198,23 @@ func (o wafOutcome) renderInactiveWAF(content wafContent) []string {
 	return lines
 }
 
-func renderWAFContext(o wafOutcome, snapshot *api.WAFSnapshot, historical bool, timing string) []string {
+// wafInventoryTiming describes how the inventory relates to the reported
+// operation. Cache provenance remains on the snapshot; timing does not establish
+// completeness, freshness, or operation success.
+type wafInventoryTiming uint8
+
+const (
+	wafInventoryCurrent wafInventoryTiming = iota
+	wafInventoryBeforeOperation
+	wafInventoryAfterAddition
+)
+
+func renderWAFContext(o wafOutcome, snapshot *api.WAFSnapshot, timing wafInventoryTiming) []string {
 	if snapshot == nil {
 		return nil
 	}
 	if !snapshot.Exists {
-		if historical {
+		if timing == wafInventoryBeforeOperation {
 			when := "before the update"
 			if o.cleanup {
 				when = "before cleanup"
@@ -213,14 +228,17 @@ func renderWAFContext(o wafOutcome, snapshot *api.WAFSnapshot, historical bool, 
 		noun, label, empty = "Managed items", "Current managed items", "none"
 	}
 	values := wafInventoryValues(snapshot.Items)
-	if historical {
+	if timing == wafInventoryBeforeOperation {
 		return []string{historicalInventory(noun, values, snapshot.Cached, o.cleanup)}
 	}
 	text := empty
 	if len(values) > 0 {
 		text = englishValues(values)
 	}
-	return []string{sourceLabel(label+timing, snapshot.Cached) + ": " + text}
+	if timing == wafInventoryAfterAddition {
+		label += " after the addition"
+	}
+	return []string{sourceLabel(label, snapshot.Cached) + ": " + text}
 }
 
 func (o wafOutcome) renderWAFProgress(content wafContent, cached bool) []string {
@@ -232,7 +250,7 @@ func (o wafOutcome) renderWAFProgress(content wafContent, cached bool) []string 
 		}
 	}
 	for index, batch := range o.result.Batches {
-		if batch.Result != nil && batch.Result.PrerequisiteMutation && batch.Result.Status == api.WAFBatchNoEffect {
+		if batch.Result != nil && batch.Result.ListCreationDispatched && batch.Result.Status == api.WAFBatchNoEffect {
 			lines = append(lines, "List creation unconfirmed")
 		}
 		if len(batch.Create) > 0 {

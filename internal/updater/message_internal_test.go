@@ -30,12 +30,12 @@ func TestMessageFailed(t *testing.T) {
 			before.Items = nil
 		} else {
 			cleanup.Stages = []api.WAFCleanupStage{{WholeList: false, Items: []api.WAFListItem{item}, Result: api.WAFBatchResult{
-				PrerequisiteMutation: false, OK: tc.code != setter.ResponseFailed, Status: tc.status,
-				Returned: nil, ReturnedItems: nil,
+				ListCreationDispatched: false, OK: tc.code != setter.ResponseFailed, Status: tc.status,
+				ReturnedManaged: nil, ReturnedAllItems: nil,
 			}}}
 		}
 		if tc.code == setter.ResponseUpdated {
-			cleanup.Stages[0].Result.Returned = &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}
+			cleanup.Stages[0].Result.ReturnedManaged = &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}
 		}
 		message := newMessage()
 		message.cleanup = true

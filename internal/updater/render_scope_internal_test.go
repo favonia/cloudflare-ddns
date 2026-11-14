@@ -43,18 +43,18 @@ func TestRenderWAFObservationAndCause(t *testing.T) {
 	o.scope = wafScope{ipnet.IP4: true, ipnet.IP6: false}
 	o.result.Code = setter.ResponseUpdated
 	o.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}
-	o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: added.Prefix, Comment: "owned"}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{added}}, ReturnedItems: []api.WAFListItem{added}}}}
+	o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: added.Prefix, Comment: "owned"}}, Delete: nil, Result: &api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{added}}, ReturnedAllItems: []api.WAFListItem{added}}}}
 	text := renderWAF(o)
 	require.Contains(t, text, "only managed IPv4 item")
 	require.Contains(t, text, "Current managed IPv6 items: none")
 	o.result.Before.Items = []api.WAFListItem{old}
-	o.result.Batches[0].Result.ReturnedItems = append(o.result.Batches[0].Result.ReturnedItems, api.WAFListItem{ID: old.ID, Prefix: old.Prefix, Comment: "excluded"})
+	o.result.Batches[0].Result.ReturnedAllItems = append(o.result.Batches[0].Result.ReturnedAllItems, api.WAFListItem{ID: old.ID, Prefix: old.Prefix, Comment: "excluded"})
 	text = renderWAF(o)
 	require.Contains(t, text, "comment unexpectedly changed and no longer matches")
 	require.Contains(t, text, "Current managed items: 192.0.2.2/32")
 	require.NotContains(t, text, "could not be confirmed")
 	require.NotContains(t, text, "only managed")
-	o.result.Batches[0].Result.Returned = nil
+	o.result.Batches[0].Result.ReturnedManaged = nil
 	text = renderWAF(o)
 	require.Contains(t, text, "Could not read the returned list contents")
 	require.Contains(t, text, "before the update")
@@ -64,7 +64,7 @@ func TestRenderWAFObservationAndCause(t *testing.T) {
 	require.NotContains(t, text, "returned list contents")
 	require.NotContains(t, text, "could not be confirmed")
 	o.result.Batches[0].Result.Status = api.WAFBatchNoEffect
-	o.result.Batches[0].Result.PrerequisiteMutation = true
+	o.result.Batches[0].Result.ListCreationDispatched = true
 	text = renderWAF(o)
 	require.Contains(t, text, "List creation unconfirmed")
 	require.Contains(t, text, "Addition blocked")
@@ -81,7 +81,7 @@ func TestRenderWAFIdentityCardinality(t *testing.T) {
 	o.scope = wafScope{ipnet.IP4: true}
 	o.result.Code = setter.ResponseUpdated
 	o.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}
-	o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: item.Prefix, Comment: ""}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item, duplicate}}, ReturnedItems: []api.WAFListItem{item, duplicate}}}}
+	o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: item.Prefix, Comment: ""}}, Delete: nil, Result: &api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item, duplicate}}, ReturnedAllItems: []api.WAFListItem{item, duplicate}}}}
 	text := renderWAF(o)
 	require.NotContains(t, text, "only managed item")
 	require.Contains(t, text, "(2 items)")
@@ -97,7 +97,7 @@ func TestRenderWAFAcceptedCleanupScope(t *testing.T) {
 		o.scope = wafScope{ipnet.IP4: true}
 		o.cleanup = true
 		o.result.Code = setter.ResponseUpdating
-		o.result.Cleanup = &api.WAFCleanupResult{Code: api.WAFListCleanupUpdating, Before: &api.WAFSnapshot{Exists: true, Cached: cached, Items: []api.WAFListItem{first, second}}, Stages: []api.WAFCleanupStage{{WholeList: false, Items: []api.WAFListItem{first}, Result: api.WAFBatchResult{PrerequisiteMutation: false, Status: api.WAFBatchAccepted, OK: true, Returned: nil, ReturnedItems: nil}}}}
+		o.result.Cleanup = &api.WAFCleanupResult{Code: api.WAFListCleanupUpdating, Before: &api.WAFSnapshot{Exists: true, Cached: cached, Items: []api.WAFListItem{first, second}}, Stages: []api.WAFCleanupStage{{WholeList: false, Items: []api.WAFListItem{first}, Result: api.WAFBatchResult{ListCreationDispatched: false, Status: api.WAFBatchAccepted, OK: true, ReturnedManaged: nil, ReturnedAllItems: nil}}}}
 		text := renderWAF(o)
 		require.NotContains(t, text, "all managed")
 		require.Contains(t, text, "before cleanup")
@@ -124,7 +124,7 @@ func TestRenderWAFBlockedInputAndResponseOrdering(t *testing.T) {
 	o.result.Code = setter.ResponseFailed
 	o.result.Before = &api.WAFSnapshot{Exists: true, Cached: true, Items: []api.WAFListItem{old}}
 	o.result.Batches = []setter.WAFBatch{
-		{Create: []api.WAFListCreateItem{{Prefix: netip.MustParsePrefix("192.0.2.2/32"), Comment: "owned"}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Status: api.WAFBatchNoEffect, Returned: nil, ReturnedItems: nil}},
+		{Create: []api.WAFListCreateItem{{Prefix: netip.MustParsePrefix("192.0.2.2/32"), Comment: "owned"}}, Delete: nil, Result: &api.WAFBatchResult{ListCreationDispatched: false, OK: false, Status: api.WAFBatchNoEffect, ReturnedManaged: nil, ReturnedAllItems: nil}},
 		{Create: nil, Delete: []api.WAFListItem{old}, Result: nil},
 	}
 	text := renderWAF(o)
@@ -137,7 +137,7 @@ func TestRenderWAFBlockedInputAndResponseOrdering(t *testing.T) {
 	require.Less(t, strings.Index(text, "returned list contents"), strings.Index(text, "Removal not attempted"))
 	require.Contains(t, text, "Managed items before the update (cached)")
 	require.NotContains(t, text, "Current")
-	o.result.Batches[0].Result.Returned = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old, old}}
+	o.result.Batches[0].Result.ReturnedManaged = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old, old}}
 	text = renderWAF(o)
 	require.Contains(t, text, "identified reliably")
 	require.NotContains(t, text, "returned list contents")
@@ -188,7 +188,7 @@ func TestRenderWAFPrefixOnlyReturnRetainsCompletedAddition(t *testing.T) {
 			o.result.Code = setter.ResponseUpdated
 			o.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: tc.before}
 			full := append([]api.WAFListItem{foreign}, tc.before...)
-			o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: foreign.Prefix, Comment: "owned"}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: tc.before}, ReturnedItems: full}}}
+			o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: foreign.Prefix, Comment: "owned"}}, Delete: nil, Result: &api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: &api.WAFSnapshot{Exists: true, Cached: false, Items: tc.before}, ReturnedAllItems: full}}}
 			text := renderWAF(o)
 			require.Contains(t, text, "Addition completed: "+foreign.Prefix.String())
 			require.Contains(t, text, "Current managed items")

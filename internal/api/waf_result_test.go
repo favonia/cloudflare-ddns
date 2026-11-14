@@ -56,19 +56,19 @@ func TestWAFBatchResultOwnsReturnedMembership(t *testing.T) {
 				outside := api.WAFListItem{ID: "outside", Prefix: netip.MustParsePrefix("198.51.100.1/32"), Comment: "foreign"}
 				require.True(t, result.OK)
 				require.Equal(t, api.WAFBatchCompleted, result.Status)
-				require.Equal(t, &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{retained}}, result.Returned)
-				require.Equal(t, []api.WAFListItem{retained, outside}, result.ReturnedItems)
+				require.Equal(t, &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{retained}}, result.ReturnedManaged)
+				require.Equal(t, []api.WAFListItem{retained, outside}, result.ReturnedAllItems)
 				// The returned managed view must neither alias the cache nor full response.
-				result.Returned.Items[0].Comment = "result-changed"
-				require.Equal(t, retained, result.ReturnedItems[0])
+				result.ReturnedManaged.Items[0].Comment = "result-changed"
+				require.Equal(t, retained, result.ReturnedAllItems[0])
 				cached, exists, wasCached, ok := f.cfHandle.ListWAFListItems(context.Background(), pp.NewSilent(), mockWAFList, "description", "managed")
 				require.True(t, ok)
 				require.True(t, exists)
 				require.True(t, wasCached)
 				require.Equal(t, []api.WAFListItem{retained}, cached)
 				cached[0].ID = "cache-changed"
-				require.Equal(t, api.ID("retained"), result.Returned.Items[0].ID)
-				require.Equal(t, retained, result.ReturnedItems[0])
+				require.Equal(t, api.ID("retained"), result.ReturnedManaged.Items[0].ID)
+				require.Equal(t, retained, result.ReturnedAllItems[0])
 				assertHandlersExhausted(t, lists, response, mutation)
 			})
 		})
@@ -111,7 +111,7 @@ func TestWAFBatchPrerequisiteDispatch(t *testing.T) {
 					returned.setRequestLimit(1)
 				}
 				result := f.cfHandle.CreateWAFListItems(context.Background(), pp.NewSilent(), mockWAFList, "description", requested)
-				require.Equal(t, tc.want, result.PrerequisiteMutation)
+				require.Equal(t, tc.want, result.ListCreationDispatched)
 				require.Equal(t, tc.status, result.Status)
 				assertHandlersExhausted(t, lists, create, mutation, returned)
 			})

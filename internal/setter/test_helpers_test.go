@@ -401,5 +401,5 @@ func wafBatchResultForTest(ok bool) api.WAFBatchResult {
 	if ok {
 		status = api.WAFBatchCompleted
 	}
-	return api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: ok, Status: status}
+	return api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: ok, Status: status}
 }

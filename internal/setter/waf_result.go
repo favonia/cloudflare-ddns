@@ -43,8 +43,8 @@ func cloneWAFSnapshot(snapshot *api.WAFSnapshot) *api.WAFSnapshot {
 }
 
 func cloneWAFBatchResult(result api.WAFBatchResult) *api.WAFBatchResult {
-	result.Returned = cloneWAFSnapshot(result.Returned)
-	result.ReturnedItems = slices.Clone(result.ReturnedItems)
+	result.ReturnedManaged = cloneWAFSnapshot(result.ReturnedManaged)
+	result.ReturnedAllItems = slices.Clone(result.ReturnedAllItems)
 	return &result
 }
 

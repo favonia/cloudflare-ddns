@@ -241,7 +241,7 @@ func setIPs(ctx context.Context, ppfmt pp.PP,
 			return result.Code
 		})
 		outcomes = append(outcomes, dnsOutcome{
-			filtered: c.ManagedRecordsFiltered,
+			filtered: c.HasManagedRecordsSelector,
 			scope:    dnsScope{domain: configuredDomain, family: ipFamily},
 			cleanup:  false, target: ips, result: result,
 		}.clone())
@@ -319,7 +319,7 @@ func finalDeleteIP(
 			return result.Code
 		})
 		outcomes = append(outcomes, dnsOutcome{
-			filtered: c.ManagedRecordsFiltered,
+			filtered: c.HasManagedRecordsSelector,
 			scope:    dnsScope{domain: domain, family: ipFamily},
 			cleanup:  true, target: nil, result: result,
 		}.clone())
@@ -343,10 +343,7 @@ func setWAFLists(ctx context.Context, ppfmt pp.PP,
 			result = s.SetWAFList(ctx, ppfmt, l, c.WAFListDescription, targets, c.WAFListItemComment)
 			return result.Code
 		})
-		outcome := newWAFOutcome(c, l, result, false)
-		for family := range outcome.scope {
-			outcome.scope[family] = targets[family].Available
-		}
+		outcome := newWAFUpdateOutcome(c, l, result, targets)
 		outcomes = append(outcomes, outcome.clone())
 	}
 
@@ -374,10 +371,7 @@ func finalClearWAFLists(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig
 			result = s.FinalClearWAFList(ctx, ppfmt, l, c.WAFListDescription, managedFamilies, mode)
 			return result.Code
 		})
-		outcome := newWAFOutcome(c, l, result, true)
-		for family := range outcome.scope {
-			outcome.scope[family] = true
-		}
+		outcome := newWAFCleanupOutcome(c, l, result)
 		outcomes = append(outcomes, outcome.clone())
 	}
 
@@ -459,19 +453,34 @@ func FinalDeleteIPs(ctx context.Context, ppfmt pp.PP, c *config.UpdateConfig, s 
 	return mergeMessages(msgs...)
 }
 
-// newWAFOutcome starts with managed ownership from configured providers and no
-// selected families. Callers select available derived targets for updates, or
-// every managed family for cleanup, before retaining the outcome.
-func newWAFOutcome(c *config.UpdateConfig, list api.WAFList, result setter.WAFResult, cleanup bool) wafOutcome {
+// newWAFUpdateOutcome retains ownership for every configured family, including
+// families whose detection failed. Only available targets select update work.
+func newWAFUpdateOutcome(c *config.UpdateConfig, list api.WAFList, result setter.WAFResult,
+	targets map[ipnet.Family]setter.WAFTargets,
+) wafOutcome {
 	scope := make(wafScope)
 	for family, p := range ipnet.Bindings(c.Provider) {
 		if p != nil {
-			scope[family] = false
+			scope[family] = targets[family].Available
 		}
 	}
 	return wafOutcome{
-		list: list, cleanup: cleanup, result: result,
-		scope:    scope,
-		filtered: c.ManagedWAFListItemsFiltered || !scope.manages(ipnet.IP4) || !scope.manages(ipnet.IP6),
+		list: list, cleanup: false, result: result, scope: scope,
+		filtered: c.HasManagedWAFListItemsSelector || !scope.manages(ipnet.IP4) || !scope.manages(ipnet.IP6),
+	}
+}
+
+// newWAFCleanupOutcome selects all configured families for cleanup, regardless
+// of whether detection produced targets during the preceding update.
+func newWAFCleanupOutcome(c *config.UpdateConfig, list api.WAFList, result setter.WAFResult) wafOutcome {
+	scope := make(wafScope)
+	for family, p := range ipnet.Bindings(c.Provider) {
+		if p != nil {
+			scope[family] = true
+		}
+	}
+	return wafOutcome{
+		list: list, cleanup: true, result: result, scope: scope,
+		filtered: c.HasManagedWAFListItemsSelector || !scope.manages(ipnet.IP4) || !scope.manages(ipnet.IP6),
 	}
 }

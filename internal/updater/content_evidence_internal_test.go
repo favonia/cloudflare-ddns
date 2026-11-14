@@ -91,10 +91,10 @@ func TestDNSDisclosureNeedsEveryOldAddressAndExplicitEmpty(t *testing.T) {
 			row := makeDNSRow(assessedDNS{firstKnown: false, unexplained: false, outcome: o})
 			require.False(t, row.evidence.coveredBy(dnsDisclosure{addresses: nil, knownEmpty: false}))
 			require.True(t, row.evidence.coveredBy(row.disclosure))
-			state := NewReportingState(true)
-			envelope := Compose(state.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+			state := NewScheduledReportingState()
+			envelope := Compose(state.ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 			require.Empty(t, state.covered)
-			state.Submitted(envelope)
+			state.RecordSubmission(envelope)
 			require.True(t, state.covered[o.scope])
 		})
 	}
@@ -124,7 +124,7 @@ func TestWAFContentUnknownMissingEmptyAndFailedBatches(t *testing.T) {
 	}
 	old := api.WAFListItem{Comment: "", ID: "old", Prefix: netip.MustParsePrefix("192.0.2.0/24")}
 	next := api.WAFListItem{Comment: "", ID: "new", Prefix: netip.MustParsePrefix("192.0.2.1/32")}
-	for _, result := range []*api.WAFBatchResult{nil, {PrerequisiteMutation: false, OK: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchNoEffect}, {PrerequisiteMutation: false, OK: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchUnconfirmed}, {PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchCompleted, OK: false}, {PrerequisiteMutation: false, ReturnedItems: []api.WAFListItem{next}, Status: api.WAFBatchCompleted, OK: true, Returned: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{next}}}} {
+	for _, result := range []*api.WAFBatchResult{nil, {ListCreationDispatched: false, OK: false, ReturnedManaged: nil, ReturnedAllItems: nil, Status: api.WAFBatchNoEffect}, {ListCreationDispatched: false, OK: false, ReturnedManaged: nil, ReturnedAllItems: nil, Status: api.WAFBatchUnconfirmed}, {ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, Status: api.WAFBatchCompleted, OK: false}, {ListCreationDispatched: false, ReturnedAllItems: []api.WAFListItem{next}, Status: api.WAFBatchCompleted, OK: true, ReturnedManaged: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{next}}}} {
 		o := wafOutcome{filtered: false, scope: wafScope{ipnet.IP4: true, ipnet.IP6: false}, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, result: setter.WAFResult{Code: setter.ResponseNoop, Cleanup: nil, Before: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{old}}, Batches: []setter.WAFBatch{{Create: nil, Delete: []api.WAFListItem{old}, Result: result}}}}
 		content := o.content()
 		known := result != nil && result.OK
@@ -143,8 +143,8 @@ func TestWAFCleanupSnapshotFollowsWholeListFailure(t *testing.T) {
 	t.Parallel()
 	item := api.WAFListItem{Comment: "", ID: "post-failure", Prefix: netip.MustParsePrefix("192.0.2.0/24")}
 	o := wafOutcome{filtered: false, scope: wafScope{ipnet.IP4: true, ipnet.IP6: false}, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, result: setter.WAFResult{Code: setter.ResponseNoop, Before: nil, Batches: nil, Cleanup: &api.WAFCleanupResult{Code: 0, Before: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{item}}, Stages: []api.WAFCleanupStage{
-		{Items: nil, WholeList: true, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchUnconfirmed}},
-		{WholeList: false, Items: []api.WAFListItem{item}, Result: api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, Status: api.WAFBatchCompleted, OK: true}},
+		{Items: nil, WholeList: true, Result: api.WAFBatchResult{ListCreationDispatched: false, OK: false, ReturnedManaged: nil, ReturnedAllItems: nil, Status: api.WAFBatchUnconfirmed}},
+		{WholeList: false, Items: []api.WAFListItem{item}, Result: api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, Status: api.WAFBatchCompleted, OK: true}},
 	}}}}
 	content := o.content()
 	require.True(t, content.deltaKnown)
@@ -182,7 +182,7 @@ func TestWAFCleanupDoesNotPromoteConflictingIdentity(t *testing.T) {
 	conflicting.Prefix = netip.MustParsePrefix("192.0.3.0/24")
 	var outcome wafOutcome
 	outcome.scope = wafScope{ipnet.IP4: true}
-	outcome.result.Cleanup = &api.WAFCleanupResult{Code: api.WAFListCleanupUpdated, Before: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item, conflicting}}, Stages: []api.WAFCleanupStage{{WholeList: false, Items: []api.WAFListItem{item}, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: nil, ReturnedItems: nil}}}}
+	outcome.result.Cleanup = &api.WAFCleanupResult{Code: api.WAFListCleanupUpdated, Before: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item, conflicting}}, Stages: []api.WAFCleanupStage{{WholeList: false, Items: []api.WAFListItem{item}, Result: api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: nil, ReturnedAllItems: nil}}}}
 	content := outcome.content()
 	require.False(t, content.deltaKnown)
 	require.Empty(t, content.removed)
@@ -196,7 +196,7 @@ func TestWAFMembershipAnomalyRetainsOperationWithoutContentDelta(t *testing.T) {
 	var outcome wafOutcome
 	outcome.scope = wafScope{ipnet.IP4: true}
 	outcome.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item}}
-	outcome.result.Batches = []setter.WAFBatch{{Create: nil, Delete: []api.WAFListItem{item}, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}, ReturnedItems: []api.WAFListItem{changed}}}}
+	outcome.result.Batches = []setter.WAFBatch{{Create: nil, Delete: []api.WAFListItem{item}, Result: &api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}, ReturnedAllItems: []api.WAFListItem{changed}}}}
 	content := outcome.content()
 	require.False(t, content.deltaKnown)
 	require.Empty(t, content.removed)
@@ -223,18 +223,18 @@ func TestDNSGroupedSourcesRemainIndependent(t *testing.T) {
 	b.scope.domain = domain.FQDN("b.example")
 	b.result.Before.Records[0].ID = "other"
 	b.result.Progress.Operations[0].Record.ID = "other"
-	state := NewReportingState(true)
+	state := NewScheduledReportingState()
 	context := LifecycleContext{Kind: LifecycleNone, Schedule: ""}
-	envelope := Compose(state.Assess(reportingMessage(a, b)), context)
+	envelope := Compose(state.ObserveRound(reportingMessage(a, b)), context)
 	require.Len(t, envelope.Notification().Message, 1)
 	require.Contains(t, envelope.Notification().Format(), "a.example")
 	require.Contains(t, envelope.Notification().Format(), "b.example")
-	state.Submitted(envelope)
+	state.RecordSubmission(envelope)
 	for _, outcome := range []dnsOutcome{a, b} {
 		outcome.result.Code = setter.ResponseNoop
 		outcome.result.Before.Cached = true
 		outcome.result.Progress = &setter.DNSProgress{Satisfied: []netip.Addr{outcome.result.Before.Records[0].IP}, Operations: nil}
-		require.True(t, Compose(state.Assess(reportingMessage(outcome)), context).IsEmpty())
+		require.True(t, Compose(state.ObserveRound(reportingMessage(outcome)), context).IsEmpty())
 	}
 }
 
@@ -279,8 +279,8 @@ func TestWAFContentTracksOwnershipAcrossBatches(t *testing.T) {
 			outcome.scope = wafScope{ipnet.IP4: true}
 			outcome.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old}}
 			outcome.result.Batches = []setter.WAFBatch{
-				{Create: []api.WAFListCreateItem{{Prefix: created.Prefix, Comment: created.Comment}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old, created}}, ReturnedItems: []api.WAFListItem{old, created}}},
-				{Create: nil, Delete: []api.WAFListItem{old}, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: selected}, ReturnedItems: []api.WAFListItem{returned}}},
+				{Create: []api.WAFListCreateItem{{Prefix: created.Prefix, Comment: created.Comment}}, Delete: nil, Result: &api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old, created}}, ReturnedAllItems: []api.WAFListItem{old, created}}},
+				{Create: nil, Delete: []api.WAFListItem{old}, Result: &api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: &api.WAFSnapshot{Exists: true, Cached: false, Items: selected}, ReturnedAllItems: []api.WAFListItem{returned}}},
 			}
 			content := outcome.content()
 			require.Equal(t, !leavesOwnership, content.deltaKnown)
@@ -297,7 +297,7 @@ func TestWAFContentTracksOwnershipAcrossBatches(t *testing.T) {
 				require.Equal(t, api.WAFBatchCompleted, batch.Result.Status)
 				require.True(t, batch.Result.OK)
 			}
-			require.Equal(t, []api.WAFListItem{returned}, outcome.result.Batches[1].Result.ReturnedItems)
+			require.Equal(t, []api.WAFListItem{returned}, outcome.result.Batches[1].Result.ReturnedAllItems)
 		})
 	}
 }
@@ -319,14 +319,14 @@ func TestWAFContentComparesRetainedPrefixes(t *testing.T) {
 			var outcome wafOutcome
 			outcome.scope = wafScope{ipnet.IP4: true}
 			outcome.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old}}
-			outcome.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: added.Prefix, Comment: added.Comment}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{retained, added}}, ReturnedItems: []api.WAFListItem{retained, added}}}}
+			outcome.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: added.Prefix, Comment: added.Comment}}, Delete: nil, Result: &api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{retained, added}}, ReturnedAllItems: []api.WAFListItem{retained, added}}}}
 			content := outcome.content()
 			require.True(t, content.deltaKnown)
 			require.Empty(t, content.removed)
 			require.Equal(t, []api.WAFListItem{added}, content.added)
 			require.Equal(t, []api.WAFListItem{old}, content.unchanged)
 			require.Equal(t, []api.WAFListItem{old}, content.before.Items)
-			require.Equal(t, []api.WAFListItem{retained, added}, outcome.result.Batches[0].Result.Returned.Items)
+			require.Equal(t, []api.WAFListItem{retained, added}, outcome.result.Batches[0].Result.ReturnedManaged.Items)
 		})
 	}
 }
@@ -338,10 +338,10 @@ func TestWAFPrefixOnlyDoesNotAttributeExclusion(t *testing.T) {
 	foreign := api.WAFListItem{ID: "foreign", Prefix: netip.MustParsePrefix("198.51.100.0/24"), Comment: "foreign"}
 	o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, scope: wafScope{ipnet.IP4: true}}
 	o.result.Before = &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{old}}
-	o.result.Batches = []setter.WAFBatch{{Delete: nil, Create: []api.WAFListCreateItem{{Comment: "", Prefix: foreign.Prefix}}, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{old}}, ReturnedItems: []api.WAFListItem{old, foreign}}}}
+	o.result.Batches = []setter.WAFBatch{{Delete: nil, Create: []api.WAFListCreateItem{{Comment: "", Prefix: foreign.Prefix}}, Result: &api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{old}}, ReturnedAllItems: []api.WAFListItem{old, foreign}}}}
 	content := o.content()
 	require.False(t, content.deltaKnown)
-	require.Equal(t, o.result.Batches[0].Result.Returned, content.observed)
+	require.Equal(t, o.result.Batches[0].Result.ReturnedManaged, content.observed)
 	require.Empty(t, content.exclusions)
 	require.Empty(t, content.issues)
 }
@@ -353,7 +353,7 @@ func TestWAFCleanupSubtractsIdentityBeforePrefixProjection(t *testing.T) {
 	second := first
 	second.ID = "second"
 	o := wafOutcome{result: setter.WAFResult{Code: 0, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, list: api.WAFList{AccountID: "", Name: ""}, cleanup: false, scope: wafScope{ipnet.IP4: true}}
-	o.result.Cleanup = &api.WAFCleanupResult{Code: 0, Before: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{first, second}}, Stages: []api.WAFCleanupStage{{WholeList: false, Items: []api.WAFListItem{first}, Result: api.WAFBatchResult{Returned: nil, ReturnedItems: nil, PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted}}}}
+	o.result.Cleanup = &api.WAFCleanupResult{Code: 0, Before: &api.WAFSnapshot{Cached: false, Exists: true, Items: []api.WAFListItem{first, second}}, Stages: []api.WAFCleanupStage{{WholeList: false, Items: []api.WAFListItem{first}, Result: api.WAFBatchResult{ReturnedManaged: nil, ReturnedAllItems: nil, ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted}}}}
 	c := o.content()
 	require.True(t, c.deltaKnown)
 	require.Empty(t, c.removed)
@@ -416,8 +416,8 @@ func TestDNSGroupingMixedPartialOperations(t *testing.T) {
 					o.result.Effects = append(o.result.Effects, api.RecordMutation{Kind: op.Kind, Status: status, Record: fact, Membership: op.Membership})
 				}
 			}
-			state := NewReportingState(true)
-			envelope := Compose(state.Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+			state := NewScheduledReportingState()
+			envelope := Compose(state.ObserveRound(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 			wantBlocks := 2
 			if difference == "identity only" {
 				wantBlocks = 1

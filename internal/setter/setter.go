@@ -321,7 +321,8 @@ func (s setter) SetIPs(ctx context.Context, ppfmt pp.PP,
 		case api.RecordDelete:
 			effect = s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, operation.Record.ID, api.RegularDeletionMode)
 		}
-		if !result.admit(i, effect) {
+		result.recordMutation(i, effect)
+		if effect.Status != api.MutationCompleted {
 			result.Code = ResponseFailed
 			return result
 		}
@@ -380,7 +381,9 @@ func (s setter) FinalDelete(ctx context.Context, ppfmt pp.PP, ipFamily ipnet.Fam
 	allOK := true
 	for i, operation := range result.Progress.Operations {
 		id := operation.Record.ID
-		if !result.admit(i, s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, id, api.FinalDeletionMode)) {
+		effect := s.Handle.DeleteRecord(ctx, ppfmt, ipFamily, domain, id, api.FinalDeletionMode)
+		result.recordMutation(i, effect)
+		if effect.Status != api.MutationCompleted {
 			allOK = false
 
 			if ctx.Err() != nil {

@@ -61,7 +61,7 @@ func TestOperationSuccess(t *testing.T) {
 				reportCtx := t.Context()
 				list := api.WAFList{AccountID: "account", Name: "list"}
 				cfg := &config.UpdateConfig{
-					ManagedRecordsFiltered: false, ManagedWAFListItemsFiltered: false,
+					HasManagedRecordsSelector: false, HasManagedWAFListItemsSelector: false,
 					Provider: map[ipnet.Family]provider.Provider{ipnet.IP4: provider.NewStaticEmpty()},
 					Domains:  nil, HostID6: nil, WAFLists: []api.WAFList{list},
 					DefaultPrefixLen: map[ipnet.Family]int{ipnet.IP4: 32}, DetectionFilter: nil,

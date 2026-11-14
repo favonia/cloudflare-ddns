@@ -51,8 +51,8 @@ func TestRenderWAFCompletedAdditionCanObserveEmptyContents(t *testing.T) {
 			outcome.result.Batches = []setter.WAFBatch{{
 				Create: []api.WAFListCreateItem{{Prefix: netip.MustParsePrefix("192.0.2.1/32"), Comment: "owned"}}, Delete: nil,
 				Result: &api.WAFBatchResult{
-					PrerequisiteMutation: !existed, OK: true, Status: api.WAFBatchCompleted,
-					Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}, ReturnedItems: nil,
+					ListCreationDispatched: !existed, OK: true, Status: api.WAFBatchCompleted,
+					ReturnedManaged: &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}, ReturnedAllItems: nil,
 				},
 			}}
 			content := outcome.content()
@@ -98,12 +98,12 @@ func TestRenderWAFHistoricalAbsenceUsesOperationTiming(t *testing.T) {
 		var outcome wafOutcome
 		outcome.cleanup = true
 		snapshot := &api.WAFSnapshot{Exists: false, Cached: cached, Items: nil}
-		text := strings.Join(renderWAFContext(outcome, snapshot, true, ""), "\n")
+		text := strings.Join(renderWAFContext(outcome, snapshot, wafInventoryBeforeOperation), "\n")
 		require.Contains(t, text, "did not exist before cleanup")
 		require.Equal(t, cached, strings.Contains(text, "(cached)"))
 		require.NotContains(t, text, "Current")
 		outcome.cleanup = false
-		text = strings.Join(renderWAFContext(outcome, snapshot, true, ""), "\n")
+		text = strings.Join(renderWAFContext(outcome, snapshot, wafInventoryBeforeOperation), "\n")
 		require.Contains(t, text, "did not exist before the update")
 		require.NotContains(t, text, "cleanup")
 	}

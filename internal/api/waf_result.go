@@ -31,27 +31,30 @@ const (
 	WAFBatchAccepted
 )
 
-// WAFBatchResult owns evidence from a reached operation. OK preserves the work
-// Boolean, including false when a successful SDK response cannot be parsed.
-// Such a parser failure is Completed with unknown returned contents.
-// Returned contains selected managed items; ReturnedItems contains ALL parsed
-// response items, including comments outside ownership. Neither is inferred
-// from the request. Both are nil when unavailable; a nonnil Returned with zero
-// items establishes selected-empty. When Returned is nonnil, ReturnedItems is
-// the complete parsed view and contains every selected item verbatim; a nil
-// slice denotes an empty full view, not omitted membership evidence.
-// ReturnedItems must not be reported as owned
-// content without checking Returned membership. All slices are detached from
-// caches and request/response storage; returned snapshots are fresh and existing.
+// WAFBatchResult owns evidence from a reached operation. OK reports success
+// under that operation's completion policy. It is false for blocked or
+// unconfirmed work, and also for a successful SDK response that cannot be
+// parsed. Such a parser failure is Completed with unknown returned contents.
+//
+// ReturnedManaged contains comment-selected managed items. ReturnedAllItems
+// contains every parsed response item, including comments outside ownership.
+// Neither is inferred from the request. Both are nil when unavailable; a
+// nonnil ReturnedManaged with zero items establishes selected-empty.
+// When ReturnedManaged is nonnil, ReturnedAllItems is the complete parsed view
+// and contains every selected item verbatim; a nil slice then denotes an empty
+// full view, not omitted membership evidence. ReturnedAllItems must not be
+// reported as owned content without checking ReturnedManaged membership.
+// All slices are detached from caches and request/response storage; returned
+// snapshots are fresh and existing.
 type WAFBatchResult struct {
-	// PrerequisiteMutation is true when a structural list creation request was
+	// ListCreationDispatched is true when a structural list creation request was
 	// dispatched before item work, including when that creation is unconfirmed.
 	// NoEffect alone therefore does not establish unchanged list existence.
-	PrerequisiteMutation bool
-	OK                   bool
-	Status               WAFBatchStatus
-	Returned             *WAFSnapshot
-	ReturnedItems        []WAFListItem
+	ListCreationDispatched bool
+	OK                     bool
+	Status                 WAFBatchStatus
+	ReturnedManaged        *WAFSnapshot
+	ReturnedAllItems       []WAFListItem
 }
 
 // WAFCleanupStage owns one reached cleanup mutation. WholeList denotes list
@@ -77,6 +80,7 @@ type WAFCleanupResult struct {
 	Stages []WAFCleanupStage
 }
 
-func snapshotWAFItems(items []WAFListItem, exists, cached bool) *WAFSnapshot {
-	return &WAFSnapshot{Exists: exists, Cached: cached, Items: slices.Clone(items)}
+func cloneWAFSnapshot(snapshot WAFSnapshot) *WAFSnapshot {
+	snapshot.Items = slices.Clone(snapshot.Items)
+	return &snapshot
 }

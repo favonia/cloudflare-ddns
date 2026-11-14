@@ -62,7 +62,7 @@ func TestRenderWAFMissingInputRemainsDistinct(t *testing.T) {
 	o.scope = wafScope{ipnet.IP4: true}
 	o.result.Code = setter.ResponseUpdated
 	o.result.Before = &api.WAFSnapshot{Exists: false, Cached: false, Items: nil}
-	o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: item.Prefix, Comment: ""}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item}}, ReturnedItems: []api.WAFListItem{item}}}}
+	o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: item.Prefix, Comment: ""}}, Delete: nil, Result: &api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item}}, ReturnedAllItems: []api.WAFListItem{item}}}}
 	require.Contains(t, renderWAF(o), "did not exist before the update")
 	o.result.Before.Exists = true
 	require.NotContains(t, renderWAF(o), "list does not exist")
@@ -75,15 +75,15 @@ func TestRenderWAFCleanupAndMembership(t *testing.T) {
 		o.scope = wafScope{ipnet.IP4: true, ipnet.IP6: true}
 		o.cleanup = true
 		o.result.Code = setter.ResponseUpdated
-		o.result.Cleanup = &api.WAFCleanupResult{Code: api.WAFListCleanupUpdated, Before: nil, Stages: []api.WAFCleanupStage{{WholeList: true, Items: nil, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: status, Returned: nil, ReturnedItems: nil}}}}
+		o.result.Cleanup = &api.WAFCleanupResult{Code: api.WAFListCleanupUpdated, Before: nil, Stages: []api.WAFCleanupStage{{WholeList: true, Items: nil, Result: api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: status, ReturnedManaged: nil, ReturnedAllItems: nil}}}}
 		if status == api.WAFBatchAccepted {
 			item := api.WAFListItem{ID: "item", Prefix: netip.MustParsePrefix("192.0.2.1/32"), Comment: ""}
 			o.result.Code = setter.ResponseUpdating
 			o.result.Cleanup.Code = api.WAFListCleanupUpdating
 			o.result.Cleanup.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item}}
 			o.result.Cleanup.Stages = []api.WAFCleanupStage{
-				{WholeList: true, Items: nil, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Status: api.WAFBatchUnconfirmed, Returned: nil, ReturnedItems: nil}},
-				{WholeList: false, Items: []api.WAFListItem{item}, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchAccepted, Returned: nil, ReturnedItems: nil}},
+				{WholeList: true, Items: nil, Result: api.WAFBatchResult{ListCreationDispatched: false, OK: false, Status: api.WAFBatchUnconfirmed, ReturnedManaged: nil, ReturnedAllItems: nil}},
+				{WholeList: false, Items: []api.WAFListItem{item}, Result: api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchAccepted, ReturnedManaged: nil, ReturnedAllItems: nil}},
 			}
 		}
 		text := renderWAF(o)
@@ -103,7 +103,7 @@ func TestRenderWAFCleanupAndMembership(t *testing.T) {
 	o.scope = wafScope{ipnet.IP4: true}
 	o.result.Code = setter.ResponseUpdated
 	o.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old}}
-	o.result.Batches = []setter.WAFBatch{{Create: nil, Delete: []api.WAFListItem{old}, Result: &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: nil, ReturnedItems: nil}}}
+	o.result.Batches = []setter.WAFBatch{{Create: nil, Delete: []api.WAFListItem{old}, Result: &api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: nil, ReturnedAllItems: nil}}}
 	text := renderWAF(o)
 	require.Contains(t, text, "Removal completed")
 	require.Contains(t, text, "Could not read the returned list contents")
@@ -114,7 +114,7 @@ func TestRenderContentBlocks(t *testing.T) {
 	t.Parallel()
 	o := reportingOutcome("host.example", setter.ResponseUpdated, reportingSnapshot("192.0.2.1"))
 	o.result.Before.Cached = true
-	text := Compose(NewReportingState(true).Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleStartup, Schedule: "@every 1h"}).Notification().Format()
+	text := Compose(NewScheduledReportingState().ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleStartup, Schedule: "@every 1h"}).Notification().Format()
 	require.Len(t, strings.Split(text, "\n\n"), 2)
 	require.Contains(t, text, "Updated:")
 	require.Contains(t, text, "192.0.2.1 (cached) → 192.0.2.2")
@@ -128,7 +128,7 @@ func TestRenderFamilyProblemsPrecedeWAF(t *testing.T) {
 	var waf wafOutcome
 	waf.result.Code = setter.ResponseFailed
 	m.waf = []wafOutcome{waf}
-	text := Compose(NewReportingState(false).Assess(m), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+	text := Compose(NewOneShotReportingState().ObserveRound(m), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
 	require.Less(t, strings.Index(text, "IPv6"), strings.Index(text, "WAF"))
 }
 
@@ -167,14 +167,16 @@ func TestRenderUnknownEmptyCleanup(t *testing.T) {
 func TestRenderWAFOperationGroups(t *testing.T) {
 	t.Parallel()
 	statuses := []struct {
-		name   string
-		result *api.WAFBatchResult
+		name                   string
+		wantStatus             string
+		wantUnreadableContents bool
+		result                 *api.WAFBatchResult
 	}{
-		{"not attempted", nil},
-		{"blocked", &api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Status: api.WAFBatchNoEffect, Returned: nil, ReturnedItems: nil}},
-		{"unconfirmed", &api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Status: api.WAFBatchUnconfirmed, Returned: nil, ReturnedItems: nil}},
-		{"completed", &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: nil, ReturnedItems: nil}},
-		{"started", &api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchAccepted, Returned: nil, ReturnedItems: nil}},
+		{"not attempted", "not attempted", false, nil},
+		{"blocked", "blocked", false, &api.WAFBatchResult{ListCreationDispatched: false, OK: false, Status: api.WAFBatchNoEffect, ReturnedManaged: nil, ReturnedAllItems: nil}},
+		{"unconfirmed", "unconfirmed", false, &api.WAFBatchResult{ListCreationDispatched: false, OK: false, Status: api.WAFBatchUnconfirmed, ReturnedManaged: nil, ReturnedAllItems: nil}},
+		{"completed", "completed", true, &api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: nil, ReturnedAllItems: nil}},
+		{"started", "started", false, &api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchAccepted, ReturnedManaged: nil, ReturnedAllItems: nil}},
 	}
 	operands := []string{"", "192.0.2.1/32", "192.0.2.1/32 and 192.0.2.2/32", "192.0.2.1/32, 192.0.2.2/32, and 192.0.2.3/32"}
 	for _, status := range statuses {
@@ -195,10 +197,10 @@ func TestRenderWAFOperationGroups(t *testing.T) {
 						o.result.Code = setter.ResponseFailed
 						o.result.Before = &api.WAFSnapshot{Exists: true, Cached: cached, Items: items}
 						batch := setter.WAFBatch{Create: creates, Delete: nil, Result: status.result}
-						label := "Addition " + status.name
+						label := "Addition " + status.wantStatus
 						if removal {
 							batch.Create, batch.Delete = nil, items
-							label = "Removal " + status.name
+							label = "Removal " + status.wantStatus
 							if cached {
 								label += " (cached)"
 							}
@@ -213,7 +215,7 @@ func TestRenderWAFOperationGroups(t *testing.T) {
 							require.Contains(t, text, label+": "+values)
 							require.NotContains(t, text, "Added:")
 							require.NotContains(t, text, "Removed:")
-							if status.name == "completed" {
+							if status.wantUnreadableContents {
 								require.Contains(t, text, "Could not read the returned list contents")
 							}
 						}
@@ -239,7 +241,7 @@ func TestRenderWAFAcceptedCleanupGroups(t *testing.T) {
 				var o wafOutcome
 				o.scope = wafScope{ipnet.IP4: true, ipnet.IP6: true}
 				o.cleanup, o.result.Code = true, setter.ResponseUpdating
-				o.result.Cleanup = &api.WAFCleanupResult{Code: api.WAFListCleanupUpdating, Before: &api.WAFSnapshot{Exists: true, Cached: cached, Items: items}, Stages: []api.WAFCleanupStage{{WholeList: false, Items: items, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchAccepted, Returned: nil, ReturnedItems: nil}}}}
+				o.result.Cleanup = &api.WAFCleanupResult{Code: api.WAFListCleanupUpdating, Before: &api.WAFSnapshot{Exists: true, Cached: cached, Items: items}, Stages: []api.WAFCleanupStage{{WholeList: false, Items: items, Result: api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchAccepted, ReturnedManaged: nil, ReturnedAllItems: nil}}}}
 				text := renderWAF(o)
 				require.Equal(t, 1, strings.Count(text, "Cleanup started"))
 				require.NotContains(t, text, "Removal")

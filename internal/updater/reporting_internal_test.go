@@ -110,21 +110,21 @@ func reportingMessage(outcomes ...dnsOutcome) Message {
 
 func TestReportingDeferredCoverage(t *testing.T) {
 	t.Parallel()
-	s := NewReportingState(true)
+	s := NewScheduledReportingState()
 	a := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.1"))
 	b := reportingOutcome("b.example", setter.ResponseFailed, nil)
-	first := Compose(s.Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+	first := Compose(s.ObserveRound(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	require.Equal(t, notifier.KindUpdateFailure, first.Notification().Kind)
-	s.Submitted(first)
+	s.RecordSubmission(first)
 	b = reportingOutcome("b.example", setter.ResponseNoop, reportingSnapshot(""))
-	second := Compose(s.Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+	second := Compose(s.ObserveRound(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	require.Equal(t, notifier.KindStateObservation, second.Notification().Kind)
 	require.NotContains(t, second.Notification().Format(), "a.example")
 	require.Contains(t, second.Notification().Format(), "b.example")
 	// Composing and even reading the notification must not consume coverage.
-	require.False(t, Compose(s.Assess(reportingMessage(b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
-	s.Submitted(second)
-	require.True(t, Compose(s.Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
+	require.False(t, Compose(s.ObserveRound(reportingMessage(b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
+	s.RecordSubmission(second)
+	require.True(t, Compose(s.ObserveRound(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
 }
 
 func TestReportingCoverageUsesHistoricalBeforeNotTarget(t *testing.T) {
@@ -132,53 +132,53 @@ func TestReportingCoverageUsesHistoricalBeforeNotTarget(t *testing.T) {
 	for _, known := range []bool{false, true} {
 		t.Run(map[bool]string{false: "target only", true: "historical before"}[known], func(t *testing.T) {
 			t.Parallel()
-			s := NewReportingState(true)
+			s := NewScheduledReportingState()
 			o := reportingOutcome("a.example", setter.ResponseFailed, nil)
 			if known {
 				o = reportingOutcome("a.example", setter.ResponseFailed, reportingSnapshot(""))
 			}
-			s.Submitted(Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
+			s.RecordSubmission(Compose(s.ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
 			o = reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot(""))
-			require.Equal(t, known, Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
+			require.Equal(t, known, Compose(s.ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
 		})
 	}
 }
 
 func TestReportingOneShotNoCrossRoundTracking(t *testing.T) {
 	t.Parallel()
-	s := NewReportingState(false)
+	s := NewOneShotReportingState()
 	o := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.1"))
-	require.True(t, Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
+	require.True(t, Compose(s.ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
 	o = reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.2"))
-	require.True(t, Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
+	require.True(t, Compose(s.ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
 	o = reportingOutcome("a.example", setter.ResponseUpdated, reportingSnapshot("192.0.2.1"))
-	require.Equal(t, notifier.KindUpdate, Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Kind)
+	require.Equal(t, notifier.KindUpdate, Compose(s.ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Kind)
 }
 
-func TestReportingObservationAdvancesOnAssess(t *testing.T) {
+func TestReportingObservationAdvancesOnObserveRound(t *testing.T) {
 	t.Parallel()
-	s := NewReportingState(true)
+	s := NewScheduledReportingState()
 	o := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.1"))
-	s.Submitted(Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
+	s.RecordSubmission(Compose(s.ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
 	o = reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.2"))
-	a := s.Assess(reportingMessage(o))
+	a := s.ObserveRound(reportingMessage(o))
 	first := Compose(a, LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	require.Equal(t, notifier.KindStateObservation, first.Notification().Kind)
 	require.Equal(t, first.Notification(), Compose(a, LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification())
 	// No submission is needed to resolve the inference discrepancy.
-	require.True(t, Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
+	require.True(t, Compose(s.ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
 }
 
 func TestReportingReachedEffectsExplainNextFreshRead(t *testing.T) {
 	t.Parallel()
-	state := NewReportingState(true)
+	state := NewScheduledReportingState()
 	context := LifecycleContext{Kind: LifecycleNone, Schedule: ""}
 	updated := reportingOutcome("a.example", setter.ResponseUpdated, reportingSnapshot("192.0.2.1"))
-	state.Submitted(Compose(state.Assess(reportingMessage(updated)), context))
+	state.RecordSubmission(Compose(state.ObserveRound(reportingMessage(updated)), context))
 	after := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.2"))
-	require.True(t, Compose(state.Assess(reportingMessage(after)), context).IsEmpty())
+	require.True(t, Compose(state.ObserveRound(reportingMessage(after)), context).IsEmpty())
 	unexpected := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.3"))
-	require.False(t, Compose(state.Assess(reportingMessage(unexpected)), context).IsEmpty())
+	require.False(t, Compose(state.ObserveRound(reportingMessage(unexpected)), context).IsEmpty())
 }
 
 // Each row below isolates one grouping qualification, rather than claiming the
@@ -202,7 +202,7 @@ func TestReportingGroupingUsesAllRenderedFacts(t *testing.T) {
 			b := a.clone()
 			b.scope.domain = domain.FQDN("b.example")
 			modify(&b)
-			e := Compose(NewReportingState(false).Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+			e := Compose(NewOneShotReportingState().ObserveRound(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 			require.Len(t, strings.Split(e.Notification().Format(), "\n\n"), 2)
 		})
 	}
@@ -216,7 +216,7 @@ func TestReportingGroupingPreservesCacheProvenance(t *testing.T) {
 	b.result.Before.Cached = true
 	b.result.Before.Records[0].ID = "another"
 	b.result.Before.Records = append(b.result.Before.Records, b.result.Before.Records[0])
-	e := Compose(NewReportingState(false).Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+	e := Compose(NewOneShotReportingState().ObserveRound(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	require.Len(t, strings.Split(e.Notification().Format(), "\n\n"), 2)
 	require.Contains(t, e.Notification().Format(), "a.example")
 	require.Contains(t, e.Notification().Format(), "b.example")
@@ -229,7 +229,7 @@ func TestReportingGroupingCanonicalizesMappedIPv4WithoutMutatingAssessment(t *te
 		api.RecordFact{ID: "ordinary", IP: netip.MustParseAddr("192.0.2.10")})
 	a.result.Progress.Operations = append(a.result.Progress.Operations, reportingOperation(api.RecordDelete, setter.DNSOperationCompleted, "ordinary", "192.0.2.10"))
 	b := reportingOutcome("b.example", setter.ResponseUpdated, reportingSnapshot("192.0.2.10"))
-	assessment := NewReportingState(false).Assess(reportingMessage(a, b))
+	assessment := NewOneShotReportingState().ObserveRound(reportingMessage(a, b))
 	envelope := Compose(assessment, LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	require.Len(t, strings.Split(envelope.Notification().Format(), "\n\n"), 1)
 	require.Contains(t, envelope.Notification().Format(), "192.0.2.10")
@@ -259,7 +259,7 @@ func TestReportingLifecyclePriorityAndConstituentFailures(t *testing.T) {
 			m.dns[0].cleanup = tc.cleanup
 			m.waf = []wafOutcome{{result: setter.WAFResult{Code: setter.ResponseFailed, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, scope: nil, list: api.WAFList{AccountID: "account", Name: "failed-list"}, cleanup: tc.cleanup}}
 			m.problems = []operationProblem{{kind: problemDetection, family: ipnet.IP4, domains: nil}, {kind: problemFiltering, family: ipnet.IP6, domains: nil}, {kind: problemDerivation, family: ipnet.IP6, domains: []domain.Domain{domain.FQDN("derive.example")}}, {kind: problemMissingTarget, family: ipnet.IP4, domains: []domain.Domain{domain.FQDN("missing.example")}}}
-			e := Compose(NewReportingState(true).Assess(m), LifecycleContext{Kind: tc.lifecycle, Schedule: "schedule"})
+			e := Compose(NewScheduledReportingState().ObserveRound(m), LifecycleContext{Kind: tc.lifecycle, Schedule: "schedule"})
 			require.Equal(t, tc.want, e.Notification().Kind)
 			require.Len(t, strings.Split(e.Notification().Format(), "\n\n"), 7)
 			if tc.lifecycle != LifecycleShutdown {
@@ -274,10 +274,10 @@ func TestReportingLifecyclePriorityAndConstituentFailures(t *testing.T) {
 
 func TestReportingStartupIncludesNoopScopes(t *testing.T) {
 	t.Parallel()
-	s := NewReportingState(true)
+	s := NewScheduledReportingState()
 	o := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot(""))
-	s.Submitted(Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
-	e := Compose(s.Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleStartup, Schedule: "schedule"})
+	s.RecordSubmission(Compose(s.ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
+	e := Compose(s.ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleStartup, Schedule: "schedule"})
 	require.Equal(t, notifier.KindStartup, e.Notification().Kind)
 	require.Contains(t, e.Notification().Format(), "a.example")
 	require.Equal(t, notifier.KindShutdown, Compose(Assessment{dns: nil, waf: nil, problems: nil, cleanup: false}, LifecycleContext{Kind: LifecycleShutdown, Schedule: ""}).Notification().Kind)
@@ -286,7 +286,7 @@ func TestReportingStartupIncludesNoopScopes(t *testing.T) {
 func TestReportingOwnsSnapshots(t *testing.T) {
 	t.Parallel()
 	m := reportingMessage(reportingOutcome("a.example", setter.ResponseUpdated, reportingSnapshot("192.0.2.1")))
-	a := NewReportingState(true).Assess(m)
+	a := NewScheduledReportingState().ObserveRound(m)
 	e := Compose(a, LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	want := e.Notification().Format()
 	m.dns[0].target[0] = netip.MustParseAddr("192.0.2.99")
@@ -309,7 +309,7 @@ func TestReportingCompletionFactsRemainSupportedAndReadable(t *testing.T) {
 		{Status: setter.DNSOperationCompleted, Kind: api.RecordUpdate, Record: api.RecordFact{ID: "private-id", IP: netip.MustParseAddr("192.0.2.2")}, Membership: api.MembershipUnmanaged},
 		reportingOperation(api.RecordCreate, setter.DNSOperationUnconfirmed, "", "192.0.2.3"),
 	}}
-	e := Compose(NewReportingState(false).Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+	e := Compose(NewOneShotReportingState().ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	text := e.Notification().Format()
 	for _, fact := range []string{"192.0.2.1", "192.0.2.2", "192.0.2.3"} {
 		require.Contains(t, text, fact)
@@ -322,9 +322,9 @@ func TestReportingCompletionFactsRemainSupportedAndReadable(t *testing.T) {
 
 func TestReportingGroupingIgnoresEquivalentMechanicsAndCoverageReason(t *testing.T) {
 	t.Parallel()
-	s := NewReportingState(true)
+	s := NewScheduledReportingState()
 	a := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.1"))
-	s.Submitted(Compose(s.Assess(reportingMessage(a)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
+	s.RecordSubmission(Compose(s.ObserveRound(reportingMessage(a)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
 	a = reportingOutcome("a.example", setter.ResponseUpdated, reportingSnapshot("192.0.2.1"))
 	a.result.Progress.Operations = []setter.DNSOperation{{Status: setter.DNSOperationCompleted, Kind: api.RecordUpdate, Record: api.RecordFact{ID: "record", IP: a.target[0]}, Membership: api.MembershipManaged}}
 	b := a.clone()
@@ -334,13 +334,13 @@ func TestReportingGroupingIgnoresEquivalentMechanicsAndCoverageReason(t *testing
 	b.result.Progress.Operations = append(b.result.Progress.Operations, reportingOperation(api.RecordDelete, setter.DNSOperationCompleted, "record", "192.0.2.1"))
 	reportingSyncEffects(&a)
 	reportingSyncEffects(&b)
-	e := Compose(s.Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+	e := Compose(s.ObserveRound(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	require.Len(t, strings.Split(e.Notification().Format(), "\n\n"), 1)
-	s.Submitted(e)
+	s.RecordSubmission(e)
 	b = reportingOutcome("b.example", setter.ResponseNoop, reportingSnapshot("192.0.2.2"))
 	b.result.Before.Records[0].ID = "different-id"
 	b.result.Before.Cached = true
-	require.True(t, Compose(s.Assess(reportingMessage(b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
+	require.True(t, Compose(s.ObserveRound(reportingMessage(b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).IsEmpty())
 }
 
 func TestReportingGroupingCanonicalizesMappedCompletionAddresses(t *testing.T) {
@@ -353,7 +353,7 @@ func TestReportingGroupingCanonicalizesMappedCompletionAddresses(t *testing.T) {
 	b := a.clone()
 	b.scope.domain = domain.FQDN("b.example")
 	b.result.Progress.Operations = b.result.Progress.Operations[1:]
-	assessment := NewReportingState(false).Assess(reportingMessage(a, b))
+	assessment := NewOneShotReportingState().ObserveRound(reportingMessage(a, b))
 	envelope := Compose(assessment, LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	require.Len(t, strings.Split(envelope.Notification().Format(), "\n\n"), 1)
 	require.NotContains(t, envelope.Notification().Format(), "::ffff:")
@@ -363,13 +363,13 @@ func TestReportingGroupingCanonicalizesMappedCompletionAddresses(t *testing.T) {
 
 func TestReportingGroupingRetainsObservationContext(t *testing.T) {
 	t.Parallel()
-	s := NewReportingState(true)
+	s := NewScheduledReportingState()
 	a := reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.1"))
-	s.Submitted(Compose(s.Assess(reportingMessage(a)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
+	s.RecordSubmission(Compose(s.ObserveRound(reportingMessage(a)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
 	a = reportingOutcome("a.example", setter.ResponseNoop, reportingSnapshot("192.0.2.2"))
 	b := a.clone()
 	b.scope.domain = domain.FQDN("b.example")
-	e := Compose(s.Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+	e := Compose(s.ObserveRound(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	require.Len(t, strings.Split(e.Notification().Format(), "\n\n"), 2)
 	lines := strings.Split(e.Notification().Format(), "\n\n")
 	require.NotEqual(t, lines[0], lines[1])
@@ -396,7 +396,7 @@ func TestReportingWAFPendingCleanupAndLifecycleOnly(t *testing.T) {
 			m := newMessage()
 			m.cleanup = true
 			m.waf = []wafOutcome{{result: setter.WAFResult{Code: tc.code, Before: nil, Batches: nil, Cleanup: nil}, filtered: false, scope: nil, list: api.WAFList{AccountID: "account", Name: "list"}, cleanup: true}}
-			e := Compose(NewReportingState(false).Assess(m), LifecycleContext{Kind: tc.lifecycle, Schedule: ""})
+			e := Compose(NewOneShotReportingState().ObserveRound(m), LifecycleContext{Kind: tc.lifecycle, Schedule: ""})
 			require.Equal(t, tc.empty, e.IsEmpty())
 			require.Equal(t, tc.want, e.Notification().Kind)
 		})
@@ -408,7 +408,7 @@ func TestReportingComposedPunctuation(t *testing.T) {
 	t.Parallel()
 	a := reportingOutcome("a.example", setter.ResponseUpdated, reportingSnapshot("192.0.2.1"))
 	b := reportingOutcome("b.example", setter.ResponseFailed, nil)
-	e := Compose(NewReportingState(false).Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleStartup, Schedule: "@every 1h"})
+	e := Compose(NewOneShotReportingState().ObserveRound(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleStartup, Schedule: "@every 1h"})
 	fragments := strings.Split(e.Notification().Format(), "\n\n")
 	require.Len(t, fragments, 3)
 	for _, fragment := range fragments {
@@ -421,13 +421,13 @@ func TestReportingComposedPunctuation(t *testing.T) {
 func TestReportingOmitsUnknownBeforeContext(t *testing.T) {
 	t.Parallel()
 	outcome := reportingOutcome("unknown.example", setter.ResponseFailed, nil)
-	unknown := Compose(NewReportingState(false).Assess(reportingMessage(outcome)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+	unknown := Compose(NewOneShotReportingState().ObserveRound(reportingMessage(outcome)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
 	require.NotContains(t, unknown, "(")
 	require.NotContains(t, unknown, "none")
 	require.Contains(t, unknown, "unknown.example")
 	require.Contains(t, unknown, "192.0.2.2")
 	outcome.result.Before = reportingSnapshot("")
-	empty := Compose(NewReportingState(false).Assess(reportingMessage(outcome)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+	empty := Compose(NewOneShotReportingState().ObserveRound(reportingMessage(outcome)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
 	require.NotEqual(t, unknown, empty)
 	require.Contains(t, empty, "Current: no addresses")
 }
@@ -445,7 +445,7 @@ func TestReportingProgressOwnsAssessmentAndEnvelope(t *testing.T) {
 		Satisfied:  []netip.Addr{netip.MustParseAddr("192.0.2.4")},
 		Operations: []setter.DNSOperation{reportingOperation(api.RecordUpdate, setter.DNSOperationCompleted, "private-id", "192.0.2.2")},
 	}
-	a := NewReportingState(false).Assess(reportingMessage(o))
+	a := NewOneShotReportingState().ObserveRound(reportingMessage(o))
 	e := Compose(a, LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	before := e.Notification().Format()
 	o.result.Progress.Satisfied[0] = netip.MustParseAddr("192.0.2.99")
@@ -472,7 +472,7 @@ func TestReportingProgressDistinguishesRequiredWork(t *testing.T) {
 					reportingOperation(api.RecordCreate, setter.DNSOperationNotAttempted, "", "192.0.2.4"),
 				},
 			}
-			text := Compose(NewReportingState(false).Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+			text := Compose(NewOneShotReportingState().ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
 			require.Contains(t, text, "Update confirmed: 192.0.2.2")
 			require.Contains(t, text, "Addition not attempted: 192.0.2.4")
 			require.Contains(t, text, "Unchanged: 192.0.2.5")
@@ -499,7 +499,7 @@ func TestReportingProgressRetainsDeletionMultiplicity(t *testing.T) {
 		reportingOperation(api.RecordDelete, setter.DNSOperationNotAttempted, "unvisited-one", "192.0.2.1"),
 		reportingOperation(api.RecordDelete, setter.DNSOperationNotAttempted, "unvisited-two", "192.0.2.1"),
 	}}
-	text := Compose(NewReportingState(false).Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+	text := Compose(NewOneShotReportingState().ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
 	require.Contains(t, text, "Update confirmed: 192.0.2.2")
 	require.Contains(t, text, "Removal confirmed: 192.0.2.1 (1 record)")
 	require.Contains(t, text, "Removal unconfirmed: 192.0.2.1 (1 record)")
@@ -509,7 +509,7 @@ func TestReportingProgressRetainsDeletionMultiplicity(t *testing.T) {
 	b := o.clone()
 	b.scope.domain = domain.FQDN("different.example")
 	b.result.Progress.Operations = b.result.Progress.Operations[:4]
-	e := Compose(NewReportingState(false).Assess(reportingMessage(o, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+	e := Compose(NewOneShotReportingState().ObserveRound(reportingMessage(o, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
 	require.Len(t, strings.Split(e.Notification().Format(), "\n\n"), 2)
 }
 
@@ -523,7 +523,7 @@ func TestReportingNoopCacheProvenance(t *testing.T) {
 			b := a.clone()
 			b.scope.domain = domain.FQDN("cached.example")
 			b.result.Before.Cached = true
-			text := Compose(NewReportingState(true).Assess(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleStartup, Schedule: ""}).Notification().Format()
+			text := Compose(NewScheduledReportingState().ObserveRound(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleStartup, Schedule: ""}).Notification().Format()
 			lines := strings.Split(text, "\n\n")
 			require.Len(t, lines, 3)
 			require.Contains(t, lines[1], "Current: ")
@@ -555,7 +555,7 @@ func TestReportingProgressRemovalGroups(t *testing.T) {
 			for i, address := range tc.addresses {
 				o.result.Progress.Operations = append(o.result.Progress.Operations, reportingOperation(api.RecordDelete, tc.status, string(rune('a'+i)), address))
 			}
-			text := Compose(NewReportingState(false).Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+			text := Compose(NewOneShotReportingState().ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
 			for _, fragment := range tc.want {
 				require.Contains(t, text, fragment)
 			}
@@ -569,7 +569,7 @@ func TestReportingSuccessfulProgressUsesWholeOutcome(t *testing.T) {
 	t.Parallel()
 	o := reportingOutcome("success.example", setter.ResponseUpdated, reportingSnapshot("192.0.2.1"))
 	o.result.Progress.Operations[0].Membership = api.MembershipManaged
-	text := Compose(NewReportingState(false).Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+	text := Compose(NewOneShotReportingState().ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
 	require.Contains(t, text, "Updated:")
 	require.Contains(t, text, "192.0.2.1 → 192.0.2.2")
 	require.NotContains(t, text, "confirmed update")
@@ -582,11 +582,11 @@ func TestReportingWAFEmptyFallbackRetainsAttempt(t *testing.T) {
 		t.Run(string(kind), func(t *testing.T) {
 			t.Parallel()
 			before := &api.WAFSnapshot{Exists: true, Cached: false, Items: nil}
-			result := setter.WAFResult{Code: setter.ResponseNoop, Before: before, Batches: nil, Cleanup: &api.WAFCleanupResult{Code: api.WAFListCleanupNoop, Before: before, Stages: []api.WAFCleanupStage{{WholeList: true, Items: nil, Result: api.WAFBatchResult{PrerequisiteMutation: false, OK: false, Status: api.WAFBatchUnconfirmed, Returned: nil, ReturnedItems: nil}}}}}
+			result := setter.WAFResult{Code: setter.ResponseNoop, Before: before, Batches: nil, Cleanup: &api.WAFCleanupResult{Code: api.WAFListCleanupNoop, Before: before, Stages: []api.WAFCleanupStage{{WholeList: true, Items: nil, Result: api.WAFBatchResult{ListCreationDispatched: false, OK: false, Status: api.WAFBatchUnconfirmed, ReturnedManaged: nil, ReturnedAllItems: nil}}}}}
 			m := newMessage()
 			m.cleanup = true
 			m.waf = []wafOutcome{{result: result, filtered: false, scope: wafScope{ipnet.IP4: true, ipnet.IP6: true}, list: api.WAFList{AccountID: "account", Name: "list"}, cleanup: true}}
-			e := Compose(NewReportingState(false).Assess(m), LifecycleContext{Kind: lifecycle, Schedule: ""})
+			e := Compose(NewOneShotReportingState().ObserveRound(m), LifecycleContext{Kind: lifecycle, Schedule: ""})
 			require.Contains(t, e.Notification().Format(), "List deletion unconfirmed")
 			require.Contains(t, e.Notification().Format(), "Current: no items")
 			require.Equal(t, kind, e.Notification().Kind)
@@ -606,7 +606,7 @@ func TestReportingCommentExclusionRequiresCompletedReturnedMismatch(t *testing.T
 				op := reportingOperation(kind, status, "record", "192.0.2.2")
 				op.Membership = membership
 				o.result.Progress.Operations = []setter.DNSOperation{op}
-				text := Compose(NewReportingState(false).Assess(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
+				text := Compose(NewOneShotReportingState().ObserveRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification().Format()
 				if status == setter.DNSOperationCompleted && membership == api.MembershipUnmanaged {
 					require.Contains(t, text, "Record for 192.0.2.2 excluded from management: its unexpected new comment does not match the filter.")
 					lines := strings.Split(text, "\n")

@@ -156,7 +156,7 @@ func TestStopUpdatingDeleteOnStop(t *testing.T) {
 		DeleteOnStop:  true,
 	}
 	updateConfig := &config.UpdateConfig{
-		ManagedRecordsFiltered: false, ManagedWAFListItemsFiltered: false,
+		HasManagedRecordsSelector: false, HasManagedWAFListItemsSelector: false,
 		Provider: map[ipnet.Family]provider.Provider{
 			ipnet.IP4: provider.MustNewStatic(ipnet.IP4, 32, "192.0.2.1"),
 			ipnet.IP6: nil,
@@ -203,7 +203,7 @@ func TestStopUpdatingSkipsDeleteOnStop(t *testing.T) {
 			DeleteOnStop:  false,
 		},
 		&config.UpdateConfig{
-			ManagedRecordsFiltered: false, ManagedWAFListItemsFiltered: false,
+			HasManagedRecordsSelector: false, HasManagedWAFListItemsSelector: false,
 			Provider: nil,
 			Domains:  nil,
 			HostID6:  nil,
@@ -244,7 +244,7 @@ func TestRunOnceCleanup(t *testing.T) {
 	}
 
 	updateConfig := &config.UpdateConfig{
-		ManagedRecordsFiltered: false, ManagedWAFListItemsFiltered: false,
+		HasManagedRecordsSelector: false, HasManagedWAFListItemsSelector: false,
 		Provider: map[ipnet.Family]provider.Provider{
 			ipnet.IP4: provider.NewStaticEmpty(),
 			ipnet.IP6: nil,

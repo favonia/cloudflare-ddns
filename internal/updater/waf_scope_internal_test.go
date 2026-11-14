@@ -28,8 +28,8 @@ func TestWAFScopeRetainsEmptyUnselectedFamily(t *testing.T) {
 		o.result.Batches = []setter.WAFBatch{{
 			Create: []api.WAFListCreateItem{{Prefix: item.Prefix, Comment: item.Comment}}, Delete: nil,
 			Result: &api.WAFBatchResult{
-				Status: api.WAFBatchCompleted, OK: true, PrerequisiteMutation: false,
-				Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item}}, ReturnedItems: []api.WAFListItem{item},
+				Status: api.WAFBatchCompleted, OK: true, ListCreationDispatched: false,
+				ReturnedManaged: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item}}, ReturnedAllItems: []api.WAFListItem{item},
 			},
 		}}
 		content := o.content()
@@ -67,7 +67,7 @@ func TestWAFScopePartialCleanupPreservesUnselectedInventory(t *testing.T) {
 		before := &api.WAFSnapshot{Exists: true, Cached: true, Items: []api.WAFListItem{four, six}}
 		o.result.Before = before
 		o.result.Cleanup = &api.WAFCleanupResult{Code: cleanupCode, Before: before, Stages: []api.WAFCleanupStage{{
-			WholeList: false, Items: []api.WAFListItem{four}, Result: api.WAFBatchResult{Status: status, OK: true, PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil},
+			WholeList: false, Items: []api.WAFListItem{four}, Result: api.WAFBatchResult{Status: status, OK: true, ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil},
 		}}}
 		content := o.content()
 		require.Equal(t, status == api.WAFBatchCompleted, content.deltaKnown)

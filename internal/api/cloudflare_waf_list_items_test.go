@@ -662,7 +662,7 @@ func TestDeleteWAFListItems(t *testing.T) {
 					wantStatus = api.WAFBatchUnconfirmed
 				}
 				require.Equal(t, wantStatus, ok.Status)
-				returned := ok.Returned
+				returned := ok.ReturnedManaged
 				if tc.ok && name != "empty" {
 					require.NotNil(t, returned, "successful response must retain actual returned content")
 					require.Len(t, returned.Items, len(tc.listItemsResponse))
@@ -871,7 +871,7 @@ func TestCreateWAFListItems(t *testing.T) {
 					wantStatus = api.WAFBatchUnconfirmed
 				}
 				require.Equal(t, wantStatus, ok.Status)
-				returned := ok.Returned
+				returned := ok.ReturnedManaged
 				if tc.ok && name != "empty" {
 					require.NotNil(t, returned, "successful response must retain actual returned content")
 					require.Len(t, returned.Items, len(tc.listItemsResponse))
@@ -1026,7 +1026,7 @@ func TestWAFMalformedMutationResponseInvalidatesInputCache(t *testing.T) {
 				result := mutation()
 				require.Equal(t, api.WAFBatchCompleted, result.Status)
 				require.False(t, result.OK)
-				require.Nil(t, result.Returned)
+				require.Nil(t, result.ReturnedManaged)
 				current, exists, cached, ok := f.cfHandle.ListWAFListItems(context.Background(), pp.NewSilent(), mockWAFList, "description", "")
 				require.True(t, ok)
 				require.True(t, exists)

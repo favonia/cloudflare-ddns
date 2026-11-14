@@ -2,7 +2,6 @@ package updater
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,7 +9,6 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/domain"
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/notifier"
-	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
 // These direct semantic fixtures exercise the actual constructors and composition
@@ -34,26 +32,16 @@ func TestNotificationProblemRenderingCapture(t *testing.T) {
 	}
 	captures := make([]capture, 0, 6)
 	for _, scenario := range append([]renderingScenario{
-		{"direct-semantic-filter-rejection", generateFilterAbortDetectMessage(ipnet.IP4)},
-		{"direct-semantic-derivation-failure", generateIP6DerivationFailureMessage([]domain.Domain{domain.FQDN("host0.example"), domain.FQDN("host1.example")})},
-		{"direct-semantic-missing-target", generateMissingTargetSetsMessage(ipnet.IP6, []domain.Domain{domain.FQDN("host0.example")})},
+		{"direct-semantic-filter-rejection", generateFilterAbortDetectMessage(ipnet.IP4), notifier.KindUpdateFailure, true, nil},
+		{"direct-semantic-derivation-failure", generateIP6DerivationFailureMessage([]domain.Domain{domain.FQDN("host0.example"), domain.FQDN("host1.example")}), notifier.KindUpdateFailure, true, nil},
+		{"direct-semantic-missing-target", generateMissingTargetSetsMessage(ipnet.IP6, []domain.Domain{domain.FQDN("host0.example")}), notifier.KindUpdateFailure, true, nil},
 	}, append(defensiveRenderingScenarios(), defensiveWAFRenderingScenarios()...)...) {
 		for _, verbosity := range []string{"quiet", "normal"} {
-			notification := Compose(NewReportingState(false).Assess(scenario.message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification()
-			kind := notifier.KindUpdateFailure
-			if scenario.message.cleanup {
-				kind = notifier.KindCleanupFailure
-			}
-			if strings.HasPrefix(scenario.name, "defensive-waf-") && scenario.message.waf[0].result.Code != setter.ResponseFailed {
-				kind = notifier.KindUpdate
-				if scenario.message.cleanup {
-					kind = notifier.KindCleanup
-				}
-			}
-			require.Equal(t, kind, notification.Kind, scenario.name)
+			notification := Compose(NewOneShotReportingState().ObserveRound(scenario.message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).Notification()
+			require.Equal(t, scenario.wantKind, notification.Kind, scenario.name)
 			require.Len(t, notification.Message, 1)
 			events := []event{{Channel: "notifier", Text: notification.Format(), Kind: notification.Kind}}
-			if !strings.HasPrefix(scenario.name, "defensive-") {
+			if scenario.captureHeartbeat {
 				require.False(t, scenario.message.HeartbeatMessage.OK)
 				events = append([]event{{Channel: "heartbeat-ping", Text: scenario.message.HeartbeatMessage.Format(), Kind: ""}}, events...)
 			}

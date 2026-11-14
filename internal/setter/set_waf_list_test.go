@@ -409,7 +409,7 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 						Return(permutedItems, true, false, true)
 					deleteCall := h.mockHandle.EXPECT().
 						DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, scenario.wantDeleteID).
-						Return(api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted})
+						Return(api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted})
 					if len(scenario.wantCreate) == 0 {
 						gomock.InOrder(readCall, deleteCall)
 					} else {
@@ -422,7 +422,7 @@ func TestSetWAFListMutationPlanOrderInvariant(t *testing.T) {
 						}
 						createCall := h.mockHandle.EXPECT().
 							CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, expectedCreateItems).
-							Return(api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted})
+							Return(api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted})
 						gomock.InOrder(readCall, createCall, deleteCall)
 					}
 
@@ -475,12 +475,12 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 				CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.WAFListCreateItem{
 					{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: "inherit-me"},
 				}).
-				Return(api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}),
+				Return(api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}),
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
 				"10.0.0.1/32", wafList.Describe()),
 			h.mockHandle.EXPECT().
 				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{outdated4.ID}).
-				Return(api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}),
+				Return(api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}),
 			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
 				"20.0.0.0/24", wafList.Describe()),
 		)
@@ -508,12 +508,12 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 				CreateWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.WAFListCreateItem{
 					{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: fallbackComment},
 				}).
-				Return(api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}),
+				Return(api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}),
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
 				"10.0.0.1/32", wafList.Describe()),
 			h.mockHandle.EXPECT().
 				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{outdated4.ID, outdated4b.ID}).
-				Return(api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}),
+				Return(api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}),
 			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
 				"20.0.0.0/24", wafList.Describe()),
 			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
@@ -540,14 +540,14 @@ func TestSetWAFListCreateCommentReconciliation(t *testing.T) {
 					{Prefix: netip.MustParsePrefix("10.0.0.1/32"), Comment: "inherit-me"},
 					{Prefix: netip.MustParsePrefix("2001:db8::/64"), Comment: "inherit-v6"},
 				}).
-				Return(api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}),
+				Return(api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}),
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
 				"10.0.0.1/32", wafList.Describe()),
 			h.mockPP.EXPECT().Noticef(pp.EmojiCreation, "Added %s to the list %s",
 				"2001:db8::/64", wafList.Describe()),
 			h.mockHandle.EXPECT().
 				DeleteWAFListItems(ctx, h.mockPP, wafList, listDescription, []api.ID{outdated4.ID, outdated6.ID}).
-				Return(api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}),
+				Return(api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}),
 			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
 				"20.0.0.0/24", wafList.Describe()),
 			h.mockPP.EXPECT().Noticef(pp.EmojiDeletion, "Deleted %s from the list %s",
@@ -588,11 +588,11 @@ func TestSetWAFListCreateCommentPathIndependenceAcrossDriftSteps(t *testing.T) {
 				DoAndReturn(func(_ context.Context, _ pp.PP, _ api.WAFList, _ string, items []api.WAFListCreateItem) api.WAFBatchResult {
 					require.Len(t, items, 1)
 					twoStepCreateComments = append(twoStepCreateComments, items[0].Comment)
-					return api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}
+					return api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}
 				}),
 			twoStep.mockHandle.EXPECT().
 				DeleteWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, []api.ID{initialOutdated1.ID, initialOutdated2.ID}).
-				Return(api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}),
+				Return(api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}),
 			twoStep.mockHandle.EXPECT().
 				ListWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, "").
 				Return([]api.WAFListItem{midItem}, true, false, true),
@@ -601,11 +601,11 @@ func TestSetWAFListCreateCommentPathIndependenceAcrossDriftSteps(t *testing.T) {
 				DoAndReturn(func(_ context.Context, _ pp.PP, _ api.WAFList, _ string, items []api.WAFListCreateItem) api.WAFBatchResult {
 					require.Len(t, items, 1)
 					twoStepCreateComments = append(twoStepCreateComments, items[0].Comment)
-					return api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}
+					return api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}
 				}),
 			twoStep.mockHandle.EXPECT().
 				DeleteWAFListItems(ctx, twoStep.mockPP, wafList, listDescription, []api.ID{midItem.ID}).
-				Return(api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}),
+				Return(api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}),
 		)
 
 		resp := twoStep.setter.SetWAFList(ctx, twoStep.mockPP, wafList, listDescription, detected(midIP, netip.Addr{}), "")
@@ -628,11 +628,11 @@ func TestSetWAFListCreateCommentPathIndependenceAcrossDriftSteps(t *testing.T) {
 				DoAndReturn(func(_ context.Context, _ pp.PP, _ api.WAFList, _ string, items []api.WAFListCreateItem) api.WAFBatchResult {
 					require.Len(t, items, 1)
 					directCreateComment = items[0].Comment
-					return api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}
+					return api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}
 				}),
 			direct.mockHandle.EXPECT().
 				DeleteWAFListItems(ctx, direct.mockPP, wafList, listDescription, []api.ID{initialOutdated1.ID, initialOutdated2.ID}).
-				Return(api.WAFBatchResult{PrerequisiteMutation: false, Returned: nil, ReturnedItems: nil, OK: true, Status: api.WAFBatchCompleted}),
+				Return(api.WAFBatchResult{ListCreationDispatched: false, ReturnedManaged: nil, ReturnedAllItems: nil, OK: true, Status: api.WAFBatchCompleted}),
 		)
 
 		resp = direct.setter.SetWAFList(ctx, direct.mockPP, wafList, listDescription, detected(finalIP, netip.Addr{}), "")

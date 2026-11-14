@@ -18,12 +18,12 @@ import (
 func TestWAFReturnedViewsRequireCompleteMembershipEvidence(t *testing.T) {
 	t.Parallel()
 	item := api.WAFListItem{ID: "owned", Prefix: netip.MustParsePrefix("192.0.2.1/32"), Comment: "owned"}
-	result := api.WAFBatchResult{PrerequisiteMutation: false, OK: true, Status: api.WAFBatchCompleted, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item}}, ReturnedItems: nil}
+	result := api.WAFBatchResult{ListCreationDispatched: false, OK: true, Status: api.WAFBatchCompleted, ReturnedManaged: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{item}}, ReturnedAllItems: nil}
 	require.False(t, trustworthyWAFResponse(result))
-	result.ReturnedItems = []api.WAFListItem{item}
+	result.ReturnedAllItems = []api.WAFListItem{item}
 	require.True(t, trustworthyWAFResponse(result))
-	result.Returned.Items = nil
-	result.ReturnedItems = nil
+	result.ReturnedManaged.Items = nil
+	result.ReturnedAllItems = nil
 	require.True(t, trustworthyWAFResponse(result), "nil full items validly represent a parsed empty list")
 }
 
@@ -37,7 +37,7 @@ func TestWAFIncompleteReturnedViewCannotEstablishDelta(t *testing.T) {
 	o.scope = wafScope{ipnet.IP4: true}
 	o.result.Code = setter.ResponseUpdated
 	o.result.Before = &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{old}}
-	o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: next.Prefix, Comment: next.Comment}}, Delete: nil, Result: &api.WAFBatchResult{PrerequisiteMutation: false, Status: api.WAFBatchCompleted, OK: true, Returned: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{next}}, ReturnedItems: nil}}}
+	o.result.Batches = []setter.WAFBatch{{Create: []api.WAFListCreateItem{{Prefix: next.Prefix, Comment: next.Comment}}, Delete: nil, Result: &api.WAFBatchResult{ListCreationDispatched: false, Status: api.WAFBatchCompleted, OK: true, ReturnedManaged: &api.WAFSnapshot{Exists: true, Cached: false, Items: []api.WAFListItem{next}}, ReturnedAllItems: nil}}}
 	content := o.content()
 	require.False(t, content.deltaKnown)
 	require.Empty(t, content.removed)
