@@ -47,13 +47,13 @@ Rationale is non-normative: it records evidence, assumptions, alternatives, and 
 
 ## Directory Scope
 
-Use `docs/design/` only for durable design information that is broader than one local edit.
+Use `docs/design/` for durable decisions about shared behavior and architectural responsibilities. Document unit-specific supported usage with the unit’s API. A detail belongs here when changing it would change one of those promises; crossing file or package boundaries alone is not sufficient.
 
-Keep these repeatedly read, normative notes concise: retain governing decisions and necessary rationale, with local implementation details documented in code.
+Select necessary information before choosing its owner. State the governing promise here; keep replaceable call sequences, helper return conventions, and representation details with the code that needs them. Preserve ordering when the order itself is part of the promise, such as acknowledging work only after it is durable. Omit consequences already clear from the retained rule.
 
 - use `core/` for project-wide principles and architecture that affect many tasks
 - use `guides/` for shared editing or explanation rules reused across unrelated topics
 - use `features/` for durable feature contracts, invariants, and scope boundaries
 - update an existing note before adding a new one
-- add a new note only when no existing note can own the information cleanly and the information is durable, cross-file, and likely to matter again
+- add a new note only when no existing note can own the information cleanly and the governing decision is durable and likely to matter again
 - keep temporary rollout notes, branch-local rationale, review notes, and one-file heuristics out of `docs/design/`

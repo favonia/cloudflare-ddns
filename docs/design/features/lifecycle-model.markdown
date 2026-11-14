@@ -106,7 +106,7 @@ Scheduled shutdown cleanup may skip WAF completion polling when the API allows i
 
 The [Notification Model](notification-model.markdown) owns trigger selection, first-known address coverage, observation inference, and envelope composition. Reporting must preserve work execution, cleanup waiting, cancellation, heartbeat calls, and exit status; it introduces no additional reads or completion waiting.
 
-The composition root owns outbound reporting order. Scheduled cleanup returns its work result; the caller logs that result to the heartbeat service before sending the terminal heartbeat and composed lifecycle notification. Disabled cleanup produces no cleanup log. Execution helpers retain immediate operation diagnostics.
+The composition root coordinates heartbeat and notification delivery.
 
 ## Exit Status
 
@@ -129,5 +129,4 @@ These boundaries should remain explicit:
 ## Extension Points
 
 - If future work adds more resource kinds, they should plug into this lifecycle by defining their admissibility requirements, derivation needs, reconciliation instantiation, and cleanup eligibility instead of inventing a parallel lifecycle.
-- If target derivation stops being identity, update this note and the resource notes so the derivation boundary stays explicit.
 - If scheduling or startup ever become materially more complex, extend this note by refining phase boundaries instead of folding process-lifecycle rules into reconciliation notes.

@@ -63,7 +63,7 @@ func initConfig(ppfmt pp.PP, hb heartbeat.Heartbeat, nt notifier.Notifier) (*con
 }
 
 // stopUpdating returns final cleanup evidence, or nil when cleanup is disabled.
-// The caller owns heartbeat delivery and lifecycle notification composition.
+// The caller coordinates heartbeat and lifecycle reporting.
 func stopUpdating(
 	ctx context.Context, ppfmt pp.PP,
 	lifecycleConfig *config.LifecycleConfig, updateConfig *config.UpdateConfig,
