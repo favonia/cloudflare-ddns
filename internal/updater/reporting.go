@@ -31,13 +31,16 @@ type LifecycleContext struct {
 	Schedule string
 }
 
-// OneShotNotification selects and renders one operation's notification without
-// lifecycle context or cross-round inference and coverage. An ordinary no-op
-// without reportable reached-operation evidence is empty. The returned
-// notification is independently owned; delivery and its outcome remain the
-// caller's responsibility and do not change the work result.
-func OneShotNotification(message Message) notifier.Notification {
-	return compose(snapshotAssessment(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).notificationValue()
+// ReportOnce selects and submits one operation's notification through a nonnil
+// notifier, without lifecycle context or cross-round state. Ordinary no-ops
+// without reportable reached-operation evidence do not call Send. Submission
+// is synchronous; delivery success does not change the supplied work result.
+// The caller retains responsibility for heartbeat delivery and its ordering.
+func ReportOnce(ctx context.Context, ppfmt pp.PP, nt notifier.Notifier, message Message) {
+	envelope := compose(snapshotAssessment(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+	if !envelope.isEmpty() {
+		nt.Send(ctx, ppfmt, envelope.notificationValue())
+	}
 }
 
 // ScheduledReporter owns notification inference, submitted address coverage,

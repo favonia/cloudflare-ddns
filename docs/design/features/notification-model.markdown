@@ -102,7 +102,7 @@ DNS management operations are synchronous: an unconfirmed attempt may or may not
 
 API boundaries own admitted reads, cache-versus-remote evidence, returned-data ownership, and supported mutation effects. Setters own immutable pre-operation snapshots and progress for operations actually reached, including WAF planned batches and completion evidence. Updaters preserve intent, targets, partial DNS results, and WAF outcomes.
 
-One-shot reporting is a pure projection from an operation result, without lifecycle or cross-round state.
+Both one-shot and scheduled reporting accept operation results and own notification selection and submission. One-shot selection and composition are pure, without lifecycle or cross-round state; its reporting operation submits the resulting notification only when nonempty. Callers do not separately assemble or submit notifications for these operation results.
 
 A process-owned scheduled reporter owns inference, coverage, semantic content selection, and notification submission. The composition root supplies each completed operation result and its lifecycle context in one reporting call; absent operation results represent lifecycle-only events. The reporter advances inference even when no notification is selected, and records covered information immediately before submitting a nonempty notification, independently of delivery success. Call it serially, once per operation result, under a stable ownership scope. Snapshot, composition, and coverage phases are internal responsibilities rather than a protocol the composition root must assemble.
 

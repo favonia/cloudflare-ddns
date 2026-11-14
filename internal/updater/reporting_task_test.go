@@ -30,7 +30,7 @@ func (s *reportingSink) Send(_ context.Context, _ pp.PP, notification notifier.N
 	return false // Failed delivery still constitutes submission.
 }
 
-func TestOneShotNotificationTask(t *testing.T) {
+func TestReportOnceTask(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name    string
@@ -54,18 +54,24 @@ func TestOneShotNotificationTask(t *testing.T) {
 			} else {
 				message = reportingUpdate(t, "192.0.2.2", map[domain.Domain]setter.DNSResult{domain.FQDN("a.example"): tc.result})
 			}
-			first := updater.OneShotNotification(message)
-			require.Equal(t, tc.empty, first.IsEmpty())
-			if !tc.empty {
-				require.Equal(t, tc.want, first.Kind)
+			sink := &reportingSink{notifications: nil}
+			updater.ReportOnce(t.Context(), pp.NewSilent(), sink, message)
+			if tc.empty {
+				require.Empty(t, sink.notifications)
+				return
 			}
+			require.Len(t, sink.notifications, 1)
+			first := sink.notifications[0]
+			require.Equal(t, tc.want, first.Kind)
 			require.NotContains(t, first.Format(), "Started")
 			require.NotContains(t, first.Format(), "Stopped")
-			require.Equal(t, first, updater.OneShotNotification(message))
-			if !first.IsEmpty() {
-				first.Message[0] = "changed by recipient"
-				require.NotContains(t, updater.OneShotNotification(message).Format(), "changed by recipient")
-			}
+			updater.ReportOnce(t.Context(), pp.NewSilent(), sink, message)
+			require.Len(t, sink.notifications, 2)
+			require.Equal(t, first, sink.notifications[1])
+			first.Message[0] = "changed by recipient"
+			updater.ReportOnce(t.Context(), pp.NewSilent(), sink, message)
+			require.Len(t, sink.notifications, 3)
+			require.NotContains(t, sink.notifications[2].Format(), "changed by recipient")
 		})
 	}
 }
@@ -225,7 +231,7 @@ func reportingCompletedDeletion() setter.DNSResult {
 	return result
 }
 
-func TestOneShotNotificationRetainsWAFEmptyFallbackAttempt(t *testing.T) {
+func TestReportOnceRetainsWAFEmptyFallbackAttempt(t *testing.T) {
 	t.Parallel()
 	conf := initUpdateConfig()
 	conf.Provider[ipnet.IP4] = provider.NewStaticEmpty()
@@ -239,7 +245,10 @@ func TestOneShotNotificationRetainsWAFEmptyFallbackAttempt(t *testing.T) {
 	handle.EXPECT().FinalClearWAFList(gomock.Any(), p, list, conf.WAFListDescription, map[ipnet.Family]bool{ipnet.IP4: true, ipnet.IP6: true}, api.CleanupWait).Return(result)
 	message := updater.FinalDeleteIPs(t.Context(), p, conf, handle, api.CleanupWait)
 	require.False(t, message.Failed())
-	notification := updater.OneShotNotification(message)
+	sink := &reportingSink{notifications: nil}
+	updater.ReportOnce(t.Context(), p, sink, message)
+	require.Len(t, sink.notifications, 1)
+	notification := sink.notifications[0]
 	require.Equal(t, notifier.KindCleanup, notification.Kind)
 	require.Contains(t, notification.Format(), "List deletion unconfirmed")
 	require.Contains(t, notification.Format(), "Current: no items")

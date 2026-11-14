@@ -88,7 +88,7 @@ func runOnceCleanup(workCtx, reportCtx context.Context, ppfmt pp.PP,
 ) bool {
 	result := updater.FinalDeleteIPs(workCtx, ppfmt, updateConfig, s, api.CleanupWait)
 	hb.Ping(reportCtx, ppfmt, result.HeartbeatMessage)
-	sendNotification(reportCtx, ppfmt, nt, updater.OneShotNotification(result))
+	updater.ReportOnce(reportCtx, ppfmt, nt, result)
 	return !result.Failed()
 }
 
@@ -99,7 +99,7 @@ func runOnceUpdate(workCtx, reportCtx context.Context, ppfmt pp.PP,
 ) bool {
 	result := updater.UpdateIPs(workCtx, ppfmt, updateConfig, s)
 	hb.Ping(reportCtx, ppfmt, result.HeartbeatMessage)
-	sendNotification(reportCtx, ppfmt, nt, updater.OneShotNotification(result))
+	updater.ReportOnce(reportCtx, ppfmt, nt, result)
 	return !result.Failed()
 }
 
