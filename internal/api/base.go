@@ -167,10 +167,8 @@ type Handle interface {
 	// managed list items; implementations may use it for advisory mismatch hints.
 	//
 	// After a dispatched item mutation, implementations must replace the item
-	// cache with usable returned contents or invalidate it, including when the
-	// mutation completed but its response could not be parsed. A later listing
-	// must not reuse that pre-mutation inventory. This does not promise freshness
-	// against changes made outside this handle.
+	// cache with usable returned managed contents or invalidate it. This does not
+	// promise freshness against changes made outside this handle.
 	//
 	// The second return value indicates whether the list already exists.
 	// The third return value indicates whether the list content was cached.

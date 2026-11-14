@@ -624,7 +624,7 @@ func (h cloudflareHandle) cacheManagedWAFListItems(list WAFList, items []WAFList
 	return managedItems
 }
 
-// ListWAFListItems calls cloudflare.ListListItems, and maybe cloudflare.CreateList when needed.
+// ListWAFListItems calls cloudflare.ListListItems when the list exists.
 // It caches one managed-item view per handle/list pair.
 func (h cloudflareHandle) ListWAFListItems(ctx context.Context, ppfmt pp.PP,
 	list WAFList, fallbackDescription, fallbackItemComment string,

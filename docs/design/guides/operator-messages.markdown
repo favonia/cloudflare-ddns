@@ -24,9 +24,6 @@ When extra nuance is useful but not part of the primary outcome, emit it as foll
 - Heartbeat messages are terse status lines. Keep them compact and scan-friendly because heartbeat services mainly surface short status text.
 - Notifier messages use scope blocks separated by blank lines, with lifecycle context and prerequisite problems kept visible. Multiple blocks remain one notification delivery. The [Notification Model](../features/notification-model.markdown) owns content-delta, operation-status, source, and scope rules.
 - For multi-item lists inside heartbeat messages, prefer compact joins such as `a, b`. For notifier content, use English joins: `a and b` for two items and the Oxford comma in `a, b, and c` for three or more, without braces or square brackets.
-- Headings identify resources; place managed scope in the observation that needs it. Keep current observations, historical input, and completeness conclusions distinct, including empty sets.
-- Keep content changes distinct from individual operation outcomes. Source labels qualify admitted evidence; they do not weaken confirmed actions or certify live state at delivery.
-- A combined notification has one primary kind but must retain all constituent failures in its content. Keep domain/family identity visible and distinguish historical addresses, desired targets, completed operations, and unconfirmed outcomes; grouping follows the Notification Model.
 - Review composed runtime output in encounter order with adjacent CLI, heartbeat, and notifier messages. When exact human-facing wording is deferred, obtain maintainer approval of the recaptured production output before locking exact-text tests or goldens.
 
 ## Quoting And Value Shapes

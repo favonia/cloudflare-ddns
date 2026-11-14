@@ -101,9 +101,7 @@ Ordinary shutdown may skip WAF completion polling when the API allows it and the
 
 ## Reporting Boundaries
 
-The [Notification Model](notification-model.markdown) owns trigger selection, first-known address coverage, observation inference, and envelope composition. A round contributes at most one envelope; scheduled startup and shutdown combine their associated work with lifecycle context. Startup without an immediate update supplies no invented address state. A handled signal during the immediate round reports startup with its interrupted/partial outcome, then reports the separate shutdown flow.
-
-One-shot mode sends its operation or direct-cleanup result without separate startup/shutdown notices. Scheduling failure remains the primary notice when no future run exists, retaining cleanup outcomes and failures in the same envelope. Grouping must preserve the actual work, cleanup waiting, cancellation, heartbeat calls, and exit status; reporting introduces no additional reads or completion waiting. WAF reporting carries already-admitted contents and reached batch/cleanup evidence through these same paths, distinguishing accepted asynchronous cleanup from confirmed completion without changing the work result.
+The [Notification Model](notification-model.markdown) owns trigger selection, first-known address coverage, observation inference, and envelope composition. Reporting must preserve work execution, cleanup waiting, cancellation, heartbeat calls, and exit status; it introduces no additional reads or completion waiting.
 
 The composition root owns outbound reporting order. Scheduled cleanup returns its work result; the caller logs that result to the heartbeat service before sending the terminal heartbeat and composed lifecycle notification. Disabled cleanup produces no cleanup log. Execution helpers retain immediate operation diagnostics.
 

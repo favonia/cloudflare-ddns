@@ -33,8 +33,8 @@ const (
 
 // WAFBatchResult owns evidence from a reached operation. OK reports success
 // under that operation's completion policy. It is false for blocked or
-// unconfirmed work, and also for a successful SDK response that cannot be
-// parsed. Such a parser failure is Completed with unknown returned contents.
+// unconfirmed work, and also when the SDK operation succeeds but its returned items
+// cannot be parsed. Such a parser failure is Completed with unknown returned contents.
 //
 // ReturnedManaged contains comment-selected managed items. ReturnedAllItems
 // contains every parsed response item, including comments outside ownership.

@@ -129,9 +129,7 @@ Human-reviewed: no.
 
 An item can remain physically present while its comment removes it from the managed selection. Calling that a removal would misdescribe the operation. Conversely, rejecting a successful managed-content delta does not mean every returned fact is unknown: a complete, trustworthy selected inventory can still establish what is currently managed.
 
-The candidate design therefore preserves operation outcomes and an exclusion warning while allowing a supported terminal Current observation. It must check for later mutations that could invalidate the observation. An empty batch with no effect does not invalidate it merely because it appears later in the execution sequence.
-
-This is a proposed refinement, not a claim about all current renderer paths. The [WAF content model](../../internal/updater/waf_content.go) and [renderer](../../internal/updater/render.go) must be checked before relying on terminal inventory after a rejected delta. A single delta-known Boolean does not explain why evidence was rejected or which other observations remain usable.
+[Keeping the returned inventory separately from the content delta](../../internal/updater/waf_content.go) preserves these useful observations when membership evidence rejects the delta. A later dispatched mutation can make the inventory historical; a step without any dispatched mutation cannot. A single delta-known Boolean would lose that distinction.
 
 ### Direct Comment Wording Requires Direct Identity Evidence
 
@@ -155,7 +153,7 @@ A group-level `(cached)` keeps repeated old values compact, but attachment to an
 
 An empty managed selection is a known observation. Unknown input supplies no such observation. A missing WAF list is yet another fact: an existing list can contain zero managed items while retaining unowned contents. None of these states can be inferred merely because a value join produces an empty string.
 
-The choice between Current and Before needs operation evidence. A completed or unconfirmed mutation can make prior contents historical. A failed prerequisite with no relevant mutation may leave admitted contents usable under the existing Current/cache contract. However, WAF `NoEffect` alone does not establish that no structural list-creation request was dispatched: a failed creation can have an uncertain structural outcome. A candidate Current path for a failed lookup therefore needs that distinction propagated, not inferred from the status name.
+The choice between Current and Before needs operation evidence. A completed or unconfirmed mutation can make prior contents historical. A failed prerequisite with no relevant mutation may leave admitted contents usable under the existing Current/cache contract. However, WAF `NoEffect` alone does not establish that no structural list-creation request was dispatched: a failed creation can have an uncertain structural outcome. Keeping structural-dispatch evidence separate from item-batch status prevents an uncertain list creation from being displayed as a current missing-list observation.
 
 A more detailed timestamp or freshness report could make these distinctions explicit, but it would add recurring text without changing many operator decisions. Revisit source labels if cache provenance consistently fails to communicate their limits; do not quietly change the cache contract to repair a sentence.
 
@@ -252,11 +250,7 @@ A resource-independent footer is a weak place to explain scoped ownership or par
 
 Human-reviewed: no.
 
-A useful comparison covers empty and nonempty input, one and multiple values, overlap and disjoint sets, additions and removals, fresh and valid-cached input, expired-cache reload, configured and unavailable families, operation success and uncertainty, and shutdown waiting policy. These are dimensions to investigate, not a claim that their full Cartesian product is possible.
-
-Control flow removes combinations: an ordinary WAF create parsing failure stops subsequent deletion; an empty Delete batch does not invalidate a preceding usable result; an initial ordinary read failure cannot produce later ordinary writes. Identity anomalies can still be valuable defensive tests without being normal service behavior. Structural prerequisite outcomes may need more evidence than an operation status exposes.
-
-Source review should identify the producer path or the defensive premise for each example. Fixtures then check semantic distinctions, grouping, ordering, and provenance. Full rendered captures check whether the composed result communicates those distinctions. None of these checks alone proves remote API admissibility or reader comprehension.
+Comparing formats across the same inputs avoids favoring a template through easier examples, but not every combination of inputs is reachable. A WAF create parsing failure stops subsequent deletion; an empty Delete batch preserves the preceding usable result. These paths need different examples from malformed identity data admitted only for defensive testing. Keeping those premises explicit prevents a defensive fixture from becoming an unsupported assumption about ordinary service behavior.
 
 ### Independent Reading And Maintainer Review Have Different Jobs
 
@@ -266,4 +260,4 @@ A source reviewer needs contracts and control flow. A fresh reader should first 
 
 Independent AI reviews can reveal missing scope, awkward pronouns, contradictory implications, and unsupported claims. They are not a population study, and majority preference does not prove a design is correct. Preserve substantive disagreements: a source reviewer may see identical operand coverage where a reader still lacks a complete-set claim.
 
-Human approval of one sentence does not approve a later composition or this newly written rationale. Examples here remain argumentative material; changes to exact runtime output follow the composed-output review process in Operator Messages. Revisit an argument when its evidence premise changes, a new producer path defeats its scope, or unbriefed readers make a consequential inference the message was intended to avoid. Update the governing contract when the decision changes, instead of leaving a better explanation attached to an obsolete rule.
+Revisit an argument when its evidence premise changes, a new producer path defeats its scope, or unbriefed readers make a consequential inference the message was intended to avoid.
