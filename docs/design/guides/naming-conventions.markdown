@@ -12,6 +12,10 @@ Prefer names that reflect the semantic role and per-lookup cardinality of a valu
 - If each lookup yields one detected IP for that family, prefer a name such as `detectedIP` over `detectedIPs`.
 - If each lookup yields multiple targets for that family, prefer a plural semantic name such as `targetsByFamily` or `detectedTargets`.
 
+## Names at Call Sites
+
+Evaluate API names in representative call sites, including their arguments, construction, and surrounding control flow. The intended action and distinctions should be recognizable there without first learning the implementation. Check nearby APIs and established repository terminology for conflicting meanings; distinguish one-shot execution from at-most-once suppression. Choose names and construction together rather than relying on comments to explain incidental representations.
+
 ## Write Values Versus Ownership Selectors
 
 For user-facing setting names and config field names, keep write-side values singular and ownership selectors plural when that contrast describes the real scope difference.

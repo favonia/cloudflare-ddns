@@ -34,7 +34,7 @@ func TestDNSDisplayOperationsCanonicalizeEqualTargets(t *testing.T) {
 
 func TestRenderNoLifecycleHasNoText(t *testing.T) {
 	t.Parallel()
-	require.Empty(t, renderLifecycle(LifecycleContext{Kind: LifecycleNone, Schedule: ""}))
+	require.Empty(t, renderLifecycle(NewNoLifecycleContext()))
 }
 
 // Completed work and observed contents are independent evidence. A parsed empty

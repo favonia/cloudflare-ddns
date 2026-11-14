@@ -294,17 +294,14 @@ func renderProblem(p operationProblem) string {
 }
 
 func renderLifecycle(lifecycle LifecycleContext) string {
-	switch lifecycle.Kind {
-	case LifecycleStartup:
-		if lifecycle.Schedule == "" {
-			return "Cloudflare DDNS started"
-		}
-		return "Cloudflare DDNS started with schedule " + lifecycle.Schedule
-	case LifecycleShutdown:
+	switch lifecycle.kind {
+	case lifecycleStartup:
+		return "Cloudflare DDNS started"
+	case lifecycleShutdown:
 		return "Cloudflare DDNS stopped"
-	case LifecycleSchedulingFailure:
-		return "Cloudflare DDNS stopped because no future updates could be scheduled with " + lifecycle.Schedule
-	case LifecycleNone:
+	case lifecycleSchedulingFailure:
+		return "Cloudflare DDNS stopped because no future updates could be scheduled with " + lifecycle.schedule
+	case lifecycleNone:
 		return ""
 	}
 	return ""

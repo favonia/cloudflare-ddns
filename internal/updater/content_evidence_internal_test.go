@@ -92,7 +92,7 @@ func TestDNSDisclosureNeedsEveryOldAddressAndExplicitEmpty(t *testing.T) {
 			require.False(t, row.evidence.coveredBy(dnsDisclosure{addresses: nil, knownEmpty: false}))
 			require.True(t, row.evidence.coveredBy(row.disclosure))
 			state := newReportingState()
-			envelope := compose(state.observeRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+			envelope := compose(state.observeRound(reportingMessage(o)), NewNoLifecycleContext())
 			require.Empty(t, state.covered)
 			state.recordSubmission(envelope)
 			require.True(t, state.covered[o.scope])
@@ -224,7 +224,7 @@ func TestDNSGroupedSourcesRemainIndependent(t *testing.T) {
 	b.result.Before.Records[0].ID = "other"
 	b.result.Progress.Operations[0].Record.ID = "other"
 	state := newReportingState()
-	context := LifecycleContext{Kind: LifecycleNone, Schedule: ""}
+	context := NewNoLifecycleContext()
 	envelope := compose(state.observeRound(reportingMessage(a, b)), context)
 	require.Len(t, envelope.notificationValue().Message, 1)
 	require.Contains(t, envelope.notificationValue().Format(), "a.example")
@@ -417,7 +417,7 @@ func TestDNSGroupingMixedPartialOperations(t *testing.T) {
 				}
 			}
 			state := newReportingState()
-			envelope := compose(state.observeRound(reportingMessage(a, b)), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+			envelope := compose(state.observeRound(reportingMessage(a, b)), NewNoLifecycleContext())
 			wantBlocks := 2
 			if difference == "identity only" {
 				wantBlocks = 1

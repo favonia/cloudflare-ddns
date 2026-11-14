@@ -30,7 +30,7 @@ func (s *reportingSink) Send(_ context.Context, _ pp.PP, notification notifier.N
 	return false // Failed delivery still constitutes submission.
 }
 
-func TestReportOnceTask(t *testing.T) {
+func TestReportOneShotTask(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name    string
@@ -55,7 +55,7 @@ func TestReportOnceTask(t *testing.T) {
 				message = reportingUpdate(t, "192.0.2.2", map[domain.Domain]setter.DNSResult{domain.FQDN("a.example"): tc.result})
 			}
 			sink := &reportingSink{notifications: nil}
-			updater.ReportOnce(t.Context(), pp.NewSilent(), sink, message)
+			updater.ReportOneShot(t.Context(), pp.NewSilent(), sink, message)
 			if tc.empty {
 				require.Empty(t, sink.notifications)
 				return
@@ -63,13 +63,13 @@ func TestReportOnceTask(t *testing.T) {
 			require.Len(t, sink.notifications, 1)
 			first := sink.notifications[0]
 			require.Equal(t, tc.want, first.Kind)
-			require.NotContains(t, first.Format(), "Started")
-			require.NotContains(t, first.Format(), "Stopped")
-			updater.ReportOnce(t.Context(), pp.NewSilent(), sink, message)
+			require.NotContains(t, first.Format(), "Cloudflare DDNS started")
+			require.NotContains(t, first.Format(), "Cloudflare DDNS stopped")
+			updater.ReportOneShot(t.Context(), pp.NewSilent(), sink, message)
 			require.Len(t, sink.notifications, 2)
 			require.Equal(t, first, sink.notifications[1])
 			first.Message[0] = "changed by recipient"
-			updater.ReportOnce(t.Context(), pp.NewSilent(), sink, message)
+			updater.ReportOneShot(t.Context(), pp.NewSilent(), sink, message)
 			require.Len(t, sink.notifications, 3)
 			require.NotContains(t, sink.notifications[2].Format(), "changed by recipient")
 		})
@@ -80,7 +80,7 @@ func TestScheduledReporterSubmissionOwnsCoverage(t *testing.T) {
 	t.Parallel()
 	sink := &reportingSink{notifications: nil}
 	reporter := updater.NewScheduledReporter(sink)
-	lifecycle := updater.LifecycleContext{Kind: updater.LifecycleNone, Schedule: ""}
+	lifecycle := updater.NewNoLifecycleContext()
 	a := domain.FQDN("a.example")
 	b := domain.FQDN("b.example")
 	first := reportingUpdate(t, "192.0.2.1", map[domain.Domain]setter.DNSResult{a: reportingNoop("192.0.2.1"), b: reportingReadFailure()})
@@ -102,7 +102,7 @@ func TestScheduledReporterObservesSilentRounds(t *testing.T) {
 	t.Parallel()
 	sink := &reportingSink{notifications: nil}
 	reporter := updater.NewScheduledReporter(sink)
-	lifecycle := updater.LifecycleContext{Kind: updater.LifecycleNone, Schedule: ""}
+	lifecycle := updater.NewNoLifecycleContext()
 	name := domain.FQDN("a.example")
 	initial := reportingUpdate(t, "192.0.2.1", map[domain.Domain]setter.DNSResult{name: reportingNoop("192.0.2.1")})
 	reporter.Report(t.Context(), pp.NewSilent(), &initial, lifecycle)
@@ -125,15 +125,15 @@ func TestScheduledReporterLifecycleOnlyAndFailurePriority(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name          string
-		lifecycle     updater.LifecycleKind
+		lifecycle     updater.LifecycleContext
 		failedCleanup bool
 		want          notifier.Kind
 	}{
-		{"startup without update", updater.LifecycleStartup, false, notifier.KindStartup},
-		{"shutdown without cleanup", updater.LifecycleShutdown, false, notifier.KindShutdown},
-		{"scheduling failure without cleanup", updater.LifecycleSchedulingFailure, false, notifier.KindSchedulingFailure},
-		{"failed shutdown cleanup", updater.LifecycleShutdown, true, notifier.KindCleanupFailure},
-		{"failed scheduling cleanup", updater.LifecycleSchedulingFailure, true, notifier.KindSchedulingFailure},
+		{"startup without update", updater.NewStartupLifecycleContext(), false, notifier.KindStartup},
+		{"shutdown without cleanup", updater.NewShutdownLifecycleContext(), false, notifier.KindShutdown},
+		{"scheduling failure without cleanup", updater.NewSchedulingFailureLifecycleContext("schedule"), false, notifier.KindSchedulingFailure},
+		{"failed shutdown cleanup", updater.NewShutdownLifecycleContext(), true, notifier.KindCleanupFailure},
+		{"failed scheduling cleanup", updater.NewSchedulingFailureLifecycleContext("schedule"), true, notifier.KindSchedulingFailure},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -144,7 +144,7 @@ func TestScheduledReporterLifecycleOnlyAndFailurePriority(t *testing.T) {
 				cleanup := reportingCleanup(t, reportingReadFailure())
 				message = &cleanup
 			}
-			reporter.Report(t.Context(), pp.NewSilent(), message, updater.LifecycleContext{Kind: tc.lifecycle, Schedule: "schedule"})
+			reporter.Report(t.Context(), pp.NewSilent(), message, tc.lifecycle)
 			require.Len(t, sink.notifications, 1)
 			require.Equal(t, tc.want, sink.notifications[0].Kind)
 			if tc.failedCleanup {
@@ -154,14 +154,44 @@ func TestScheduledReporterLifecycleOnlyAndFailurePriority(t *testing.T) {
 	}
 }
 
+func TestScheduledReporterLifecycleContext(t *testing.T) {
+	t.Parallel()
+	var zero updater.LifecycleContext
+	for _, tc := range []struct {
+		name      string
+		lifecycle updater.LifecycleContext
+		want      string
+	}{
+		{"zero value", zero, ""},
+		{"no event", updater.NewNoLifecycleContext(), ""},
+		{"startup", updater.NewStartupLifecycleContext(), "Cloudflare DDNS started"},
+		{"shutdown", updater.NewShutdownLifecycleContext(), "Cloudflare DDNS stopped"},
+		{"scheduling failure", updater.NewSchedulingFailureLifecycleContext("every 2 hours"), "Cloudflare DDNS stopped because no future updates could be scheduled with every 2 hours"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			sink := &reportingSink{notifications: nil}
+			reporter := updater.NewScheduledReporter(sink)
+			reporter.Report(t.Context(), pp.NewSilent(), nil, tc.lifecycle)
+			if tc.want == "" {
+				require.Empty(t, sink.notifications)
+			} else {
+				require.Len(t, sink.notifications, 1)
+				require.Equal(t, tc.want, sink.notifications[0].Format())
+			}
+		})
+	}
+}
+
 func TestScheduledReporterSuppressesAbsentResultAndLifecycle(t *testing.T) {
 	t.Parallel()
 	sink := &reportingSink{notifications: nil}
 	reporter := updater.NewScheduledReporter(sink)
-	reporter.Report(t.Context(), pp.NewSilent(), nil, updater.LifecycleContext{Kind: updater.LifecycleNone, Schedule: ""})
+	var lifecycle updater.LifecycleContext
+	reporter.Report(t.Context(), pp.NewSilent(), nil, lifecycle)
 	require.Empty(t, sink.notifications)
 	message := reportingUpdate(t, "192.0.2.1", map[domain.Domain]setter.DNSResult{domain.FQDN("a.example"): reportingNoop("192.0.2.1")})
-	reporter.Report(t.Context(), pp.NewSilent(), &message, updater.LifecycleContext{Kind: updater.LifecycleNone, Schedule: ""})
+	reporter.Report(t.Context(), pp.NewSilent(), &message, updater.NewNoLifecycleContext())
 	require.Len(t, sink.notifications, 1)
 	require.Equal(t, notifier.KindStateObservation, sink.notifications[0].Kind)
 }
@@ -231,7 +261,7 @@ func reportingCompletedDeletion() setter.DNSResult {
 	return result
 }
 
-func TestReportOnceRetainsWAFEmptyFallbackAttempt(t *testing.T) {
+func TestReportOneShotRetainsWAFEmptyFallbackAttempt(t *testing.T) {
 	t.Parallel()
 	conf := initUpdateConfig()
 	conf.Provider[ipnet.IP4] = provider.NewStaticEmpty()
@@ -246,7 +276,7 @@ func TestReportOnceRetainsWAFEmptyFallbackAttempt(t *testing.T) {
 	message := updater.FinalDeleteIPs(t.Context(), p, conf, handle, api.CleanupWait)
 	require.False(t, message.Failed())
 	sink := &reportingSink{notifications: nil}
-	updater.ReportOnce(t.Context(), p, sink, message)
+	updater.ReportOneShot(t.Context(), p, sink, message)
 	require.Len(t, sink.notifications, 1)
 	notification := sink.notifications[0]
 	require.Equal(t, notifier.KindCleanup, notification.Kind)

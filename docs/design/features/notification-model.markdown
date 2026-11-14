@@ -106,6 +106,8 @@ Both one-shot and scheduled reporting accept operation results and own notificat
 
 A process-owned scheduled reporter owns inference, coverage, semantic content selection, and notification submission. The composition root supplies each completed operation result and its lifecycle context in one reporting call; absent operation results represent lifecycle-only events. The reporter advances inference even when no notification is selected, and records covered information immediately before submitting a nonempty notification, independently of delivery success. Call it serially, once per operation result, under a stable ownership scope. Snapshot, composition, and coverage phases are internal responsibilities rather than a protocol the composition root must assemble.
 
+Lifecycle context is a value chosen by the composition root, not a set of independently configurable fields. Its zero value means no accompanying lifecycle event; event-specific constructors supply startup, shutdown, or scheduling failure, with a schedule description only for scheduling failure. Reporting interprets this context without controlling scheduling or process lifetime.
+
 Heartbeat delivery and its ordering relative to reporting remain in the composition root. Notifiers format and deliver composed notifications through existing transports; domain-state rendering and grouping belong to the reporting layer.
 
 Document snapshot ownership, copying, cache validity, result invariants, and caller obligations with the responsible types and functions. Exact wording and channel formatting follow [Operator Messages](../guides/operator-messages.markdown).

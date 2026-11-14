@@ -13,31 +13,55 @@ import (
 	"github.com/favonia/cloudflare-ddns/internal/setter"
 )
 
-// LifecycleKind identifies context supplied by the composition root.
-type LifecycleKind uint8
+// lifecycleKind identifies context supplied by the composition root.
+type lifecycleKind uint8
 
 // Lifecycle contexts supported by ScheduledReporter.Report.
 const (
-	LifecycleNone LifecycleKind = iota
-	LifecycleStartup
-	LifecycleShutdown
-	LifecycleSchedulingFailure
+	lifecycleNone lifecycleKind = iota
+	lifecycleStartup
+	lifecycleShutdown
+	lifecycleSchedulingFailure
 )
 
 // LifecycleContext describes the service event accompanying an operation.
-// Schedule is supplied by the caller; it does not affect work or scheduling.
+// Its zero value means no lifecycle event. Use constructors for service events;
+// the context affects notification presentation, not work or scheduling.
 type LifecycleContext struct {
-	Kind     LifecycleKind
-	Schedule string
+	kind     lifecycleKind
+	schedule string
 }
 
-// ReportOnce selects and submits one operation's notification through a nonnil
+// NewNoLifecycleContext describes an ordinary round without a service event.
+// It is equivalent to the zero value of LifecycleContext.
+func NewNoLifecycleContext() LifecycleContext {
+	return LifecycleContext{kind: lifecycleNone, schedule: ""}
+}
+
+// NewStartupLifecycleContext describes service startup.
+func NewStartupLifecycleContext() LifecycleContext {
+	return LifecycleContext{kind: lifecycleStartup, schedule: ""}
+}
+
+// NewShutdownLifecycleContext describes service shutdown.
+func NewShutdownLifecycleContext() LifecycleContext {
+	return LifecycleContext{kind: lifecycleShutdown, schedule: ""}
+}
+
+// NewSchedulingFailureLifecycleContext describes termination because the schedule
+// has no future execution. schedule is the caller's human-readable description;
+// it is included verbatim and is not interpreted as a scheduling expression.
+func NewSchedulingFailureLifecycleContext(schedule string) LifecycleContext {
+	return LifecycleContext{kind: lifecycleSchedulingFailure, schedule: schedule}
+}
+
+// ReportOneShot selects and submits one operation's notification through a nonnil
 // notifier, without lifecycle context or cross-round state. Ordinary no-ops
 // without reportable reached-operation evidence do not call Send. Submission
 // is synchronous; delivery success does not change the supplied work result.
 // The caller retains responsibility for heartbeat delivery and its ordering.
-func ReportOnce(ctx context.Context, ppfmt pp.PP, nt notifier.Notifier, message Message) {
-	envelope := compose(snapshotAssessment(message), LifecycleContext{Kind: LifecycleNone, Schedule: ""})
+func ReportOneShot(ctx context.Context, ppfmt pp.PP, nt notifier.Notifier, message Message) {
+	envelope := compose(snapshotAssessment(message), LifecycleContext{kind: lifecycleNone, schedule: ""})
 	if !envelope.isEmpty() {
 		nt.Send(ctx, ppfmt, envelope.notificationValue())
 	}
@@ -202,7 +226,7 @@ func compose(a assessment, lifecycle LifecycleContext) envelope {
 	rows := make([]dnsRow, 0, len(a.dns))
 	beforeScopes := make([]dnsScope, 0, len(a.dns))
 	for _, entry := range a.dns {
-		if lifecycle.Kind != LifecycleStartup && entry.outcome.result.Code == setter.ResponseNoop &&
+		if lifecycle.kind != lifecycleStartup && entry.outcome.result.Code == setter.ResponseNoop &&
 			!entry.firstKnown && !entry.unexplained {
 			continue
 		}
@@ -226,7 +250,7 @@ func compose(a assessment, lifecycle LifecycleContext) envelope {
 		}
 	}
 	message := make(notifier.Message, 0, len(rows)+len(a.waf)+len(a.problems)+1)
-	if lifecycle.Kind != LifecycleNone {
+	if lifecycle.kind != lifecycleNone {
 		message = append(message, renderLifecycle(lifecycle))
 	}
 	for _, family := range []ipnet.Family{ipnet.IP4, ipnet.IP6} {
@@ -242,7 +266,7 @@ func compose(a assessment, lifecycle LifecycleContext) envelope {
 		}
 	}
 	for _, o := range a.waf {
-		if wafHasOperation(o) || lifecycle.Kind == LifecycleStartup {
+		if wafHasOperation(o) || lifecycle.kind == lifecycleStartup {
 			message = append(message, renderWAF(o))
 		}
 	}
@@ -311,7 +335,7 @@ func wafHasOperation(o wafOutcome) bool {
 }
 
 func notificationKind(a assessment, lifecycle LifecycleContext) notifier.Kind {
-	if lifecycle.Kind == LifecycleSchedulingFailure {
+	if lifecycle.kind == lifecycleSchedulingFailure {
 		return notifier.KindSchedulingFailure
 	}
 	failed := len(a.problems) > 0
@@ -332,9 +356,9 @@ func notificationKind(a assessment, lifecycle LifecycleContext) notifier.Kind {
 		return notifier.KindCleanupFailure
 	case failed:
 		return notifier.KindUpdateFailure
-	case lifecycle.Kind == LifecycleStartup:
+	case lifecycle.kind == lifecycleStartup:
 		return notifier.KindStartup
-	case lifecycle.Kind == LifecycleShutdown:
+	case lifecycle.kind == lifecycleShutdown:
 		return notifier.KindShutdown
 	case operation && cleanup:
 		return notifier.KindCleanup

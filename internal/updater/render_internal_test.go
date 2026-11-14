@@ -114,7 +114,7 @@ func TestRenderContentBlocks(t *testing.T) {
 	t.Parallel()
 	o := reportingOutcome("host.example", setter.ResponseUpdated, reportingSnapshot("192.0.2.1"))
 	o.result.Before.Cached = true
-	text := compose(newReportingState().observeRound(reportingMessage(o)), LifecycleContext{Kind: LifecycleStartup, Schedule: "@every 1h"}).notificationValue().Format()
+	text := compose(newReportingState().observeRound(reportingMessage(o)), NewStartupLifecycleContext()).notificationValue().Format()
 	require.Len(t, strings.Split(text, "\n\n"), 2)
 	require.Contains(t, text, "Updated:")
 	require.Contains(t, text, "192.0.2.1 (cached) → 192.0.2.2")
@@ -128,7 +128,7 @@ func TestRenderFamilyProblemsPrecedeWAF(t *testing.T) {
 	var waf wafOutcome
 	waf.result.Code = setter.ResponseFailed
 	m.waf = []wafOutcome{waf}
-	text := compose(snapshotAssessment(m), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).notificationValue().Format()
+	text := compose(snapshotAssessment(m), NewNoLifecycleContext()).notificationValue().Format()
 	require.Less(t, strings.Index(text, "IPv6"), strings.Index(text, "WAF"))
 }
 

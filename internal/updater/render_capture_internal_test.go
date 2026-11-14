@@ -37,7 +37,7 @@ func TestNotificationProblemRenderingCapture(t *testing.T) {
 		{"direct-semantic-missing-target", generateMissingTargetSetsMessage(ipnet.IP6, []domain.Domain{domain.FQDN("host0.example")}), notifier.KindUpdateFailure, true, nil},
 	}, append(defensiveRenderingScenarios(), defensiveWAFRenderingScenarios()...)...) {
 		for _, verbosity := range []string{"quiet", "normal"} {
-			notification := compose(snapshotAssessment(scenario.message), LifecycleContext{Kind: LifecycleNone, Schedule: ""}).notificationValue()
+			notification := compose(snapshotAssessment(scenario.message), NewNoLifecycleContext()).notificationValue()
 			require.Equal(t, scenario.wantKind, notification.Kind, scenario.name)
 			require.Len(t, notification.Message, 1)
 			events := []event{{Channel: "notifier", Text: notification.Format(), Kind: notification.Kind}}
