@@ -4,6 +4,7 @@ package notifier_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -58,7 +59,7 @@ func TestShoutrrrDescribe(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	m, ok := notifier.NewShoutrrr(mockPP, []string{
 		"generic://localhost/",
-		"gotify://host:80/path/tokentoken",
+		"gotify://host:80/path/Aaa.bbb.ccc.ddd",
 		"ifttt://hey/?events=1",
 	})
 	require.True(t, ok)
@@ -77,6 +78,28 @@ outer:
 		}
 	}
 	require.Equal(t, 2, count)
+}
+
+func TestShoutrrrInitializationErrorDoesNotExposeCredentials(t *testing.T) {
+	t.Parallel()
+
+	const secret = "SensitiveToken123"
+
+	mockCtrl := gomock.NewController(t)
+	mockPP := mocks.NewMockPP(mockCtrl)
+
+	mockPP.EXPECT().
+		Noticef(pp.EmojiUserError, "Failed to set up Shoutrrr notification services: %v", gomock.Any()).
+		Do(func(_ pp.Emoji, format string, args ...any) {
+			require.NotContains(t, fmt.Sprintf(format, args...), secret)
+		})
+
+	_, ok := notifier.NewShoutrrr(mockPP, []string{
+		"gotify://host:80/path/Aaa." + secret + ".ccc.ddd",
+		"gotify://host:80/path/invalid",
+	})
+
+	require.False(t, ok)
 }
 
 func TestShoutrrrSend(t *testing.T) {
