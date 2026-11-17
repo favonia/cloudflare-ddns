@@ -32,25 +32,36 @@ const (
 // describeShoutrrrService gives a human-readable description for a service.
 func describeShoutrrrService(ppfmt pp.PP, proto string) string {
 	name, known := map[string]string{
-		"bark":       "Bark",
-		"discord":    "Discord",
-		"smtp":       "Email",
-		"gotify":     "Gotify",
-		"googlechat": "Google Chat",
-		"ifttt":      "IFTTT",
-		"join":       "Join",
-		"mattermost": "Mattermost",
-		"matrix":     "Matrix",
-		"ntfy":       "Ntfy",
-		"opsgenie":   "OpsGenie",
-		"pushbullet": "Pushbullet",
-		"pushover":   "Pushover",
-		"rocketchat": "Rocketchat",
-		"slack":      "Slack",
-		"teams":      "Teams",
-		"telegram":   "Telegram",
-		"zulip":      "Zulip Chat",
-		"generic":    "Generic",
+		"bark":          "Bark",
+		"discord":       "Discord",
+		"smtp":          "Email",
+		"gotify":        "Gotify",
+		"googlechat":    "Google Chat",
+		"homeassistant": "Home Assistant",
+		"ifttt":         "IFTTT",
+		"join":          "Join",
+		"lark":          "Lark",
+		"logger":        "Logger",
+		"mattermost":    "Mattermost",
+		"matrix":        "Matrix",
+		"mqtt":          "MQTT",
+		"notifiarr":     "Notifiarr",
+		"ntfy":          "Ntfy",
+		"opsgenie":      "OpsGenie",
+		"pagerduty":     "PagerDuty",
+		"pushbullet":    "Pushbullet",
+		"pushover":      "Pushover",
+		"rocketchat":    "Rocketchat",
+		"signal":        "Signal",
+		"signalgrid":    "Signalgrid",
+		"slack":         "Slack",
+		"teams":         "Teams",
+		"telegram":      "Telegram",
+		"twilio":        "Twilio",
+		"wecom":         "WeCom",
+		"xmpp":          "XMPP",
+		"zulip":         "Zulip Chat",
+		"generic":       "Generic",
 	}[proto]
 
 	if known {
@@ -68,14 +79,12 @@ func NewShoutrrr(ppfmt pp.PP, rawURLs []string) (Shoutrrr, bool) {
 	r, err := shoutrrr.CreateSenderWithOptions(types.SenderOptions{
 		HTTPClient:  nil,
 		DialContext: nil,
-		Timeout:     0,
+		Timeout:     shoutrrrDefaultTimeout,
 	}, rawURLs...)
 	if err != nil {
 		ppfmt.Noticef(pp.EmojiUserError, "Failed to set up Shoutrrr notification services: %v", err)
 		return Shoutrrr{}, false //nolint:exhaustruct_v5
 	}
-
-	r.Timeout = shoutrrrDefaultTimeout
 
 	serviceDescriptions := make([]string, 0, len(rawURLs))
 	for _, u := range rawURLs {
