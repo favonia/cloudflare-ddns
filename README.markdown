@@ -462,19 +462,37 @@ There have been reports of intermittent issues with the default provider `cloudf
 
 ### 🤔 I got <code>context deadline exceeded</code> and IP detection failed
 
-First check the updater logs to identify the provider and IP family that timed out. If the failed provider is `cloudflare.trace`, test every current built-in endpoint from a diagnostic container that shares the updater container’s existing network stack. The commands below use the `cloudflare-ddns` service name from this README and test IPv4; replace the service name if yours differs, and replace `--ipv4` with `--ipv6` for an IPv6 failure.
+First check the updater logs to identify the provider and IP family that timed out. If the failed provider is `cloudflare.trace`, test each built-in endpoint and measure its DNS lookup, connection, and response timings from a diagnostic container that shares the updater container’s existing network stack. Run the commands below from your Compose project directory. They use the `cloudflare-ddns` service name from this README and test IPv4; replace the service name if yours differs, and replace `--ipv4` with `--ipv6` for an IPv6 failure.
 
 ```bash
 DDNS_CONTAINER="$(docker-compose ps -q cloudflare-ddns)"
 
-docker run --rm --network "container:${DDNS_CONTAINER}" curlimages/curl:latest --fail --show-error --silent --ipv4 https://api.cloudflare.com/cdn-cgi/trace
-docker run --rm --network "container:${DDNS_CONTAINER}" curlimages/curl:latest --fail --show-error --silent --ipv4 https://www.cloudflare.com/cdn-cgi/trace
-docker run --rm --network "container:${DDNS_CONTAINER}" curlimages/curl:latest --fail --show-error --silent --ipv4 https://connectivity.cloudflareclient.com/cdn-cgi/trace
+for host in \
+  api.cloudflare.com \
+  www.cloudflare.com \
+  connectivity.cloudflareclient.com
+do
+  printf '\n=== %s ===\n' "$host"
+  docker run --rm --network "container:${DDNS_CONTAINER}" \
+    curlimages/curl:latest \
+    --fail --show-error --silent --ipv4 --max-time 60 \
+    --write-out '
+Timing from request start (seconds):
+  DNS lookup complete:    %{time_namelookup}
+  TCP connection ready:   %{time_connect}
+  TLS handshake complete: %{time_appconnect}
+  First byte received:    %{time_starttransfer}
+  Total:                  %{time_total}
+' \
+    "https://${host}/cdn-cgi/trace"
+done
 ```
 
-If `curl` reports `Could not resolve host`, DNS resolution failed in the updater’s container network. Check the host’s DNS configuration and Docker’s [DNS services](https://docs.docker.com/engine/network/#dns-services). A failure at one endpoint does not by itself prevent detection, because another endpoint may return a valid response. If any of the three commands succeeds but detection still times out, check the updater logs for response-validation failures, then try increasing `DETECTION_TIMEOUT` (for example, `DETECTION_TIMEOUT=1m`).
+The timings are cumulative from the start of each request; on a successful request, the gaps between successive values help show where time was spent. Each request has a 60-second limit.
 
-If that still does not help, please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new/choose) and include your setup details, relevant configs with secrets redacted, and any logs you have so that we can investigate further.
+If `curl` reports `Could not resolve host`, DNS resolution failed in the updater’s container network. Check the host’s DNS configuration and Docker’s [DNS services](https://docs.docker.com/engine/network/#dns-services). A failure at one endpoint does not by itself prevent detection, because another endpoint may return a valid response. If any endpoint responds successfully but detection still times out, check the updater logs for response-validation failures, then try increasing `DETECTION_TIMEOUT` (for example, `DETECTION_TIMEOUT=1m`).
+
+If that still does not help, please [open a GitHub issue](https://github.com/favonia/cloudflare-ddns/issues/new/choose) and include the diagnostic output above, your setup details, relevant configs, and updater logs. Redact IP addresses, credentials, and any other sensitive information before sharing; keep the timing values and non-sensitive trace fields so that we can investigate further.
 
 ### 🤔 Why did the updater detect a public IP address different from the WAN IP address on my router?
 
