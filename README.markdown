@@ -462,7 +462,7 @@ There have been reports of intermittent issues with the default provider `cloudf
 
 ### 🤔 I got <code>context deadline exceeded</code> and IP detection failed
 
-First check the updater logs to identify the provider and IP family that timed out. If the failed provider is `cloudflare.trace`, test every current built-in endpoint from a diagnostic container that shares the updater container’s existing network stack. The commands below use the `cloudflare-ddns` service name from this README and test IPv4; replace the service name if yours differs, and replace `--ipv4` with `--ipv6` for an IPv6 failure. If the updater receives explicit proxy environment variables, pass the same variables to the diagnostic container.
+First check the updater logs to identify the provider and IP family that timed out. If the failed provider is `cloudflare.trace`, test every current built-in endpoint from a diagnostic container that shares the updater container’s existing network stack. The commands below use the `cloudflare-ddns` service name from this README and test IPv4; replace the service name if yours differs, and replace `--ipv4` with `--ipv6` for an IPv6 failure.
 
 ```bash
 DDNS_CONTAINER="$(docker-compose ps -q cloudflare-ddns)"
