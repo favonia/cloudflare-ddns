@@ -10,12 +10,13 @@
 
 A feature-rich and robust Cloudflare DDNS updater with a small Docker image. The badge above shows its current published size. [Read the full documentation on GitHub.](https://github.com/favonia/cloudflare-ddns/blob/main/README.markdown)
 
-## Supported Tags
+## Image Tags
 
 - `X.Y.Z`: A specific stable version
+- `X.Y` (unreleased): The latest stable patch release within one minor version
 - `X`: The latest stable version whose major version is `X` (e.g. `1`)
 - `latest`: The latest stable version
 - `edge`: The development version
 - `edge-alpine`: A development build running on a non-minimal Alpine Linux distribution. This allows for easier network troubleshooting due to the availability of additional system tools and libraries.
 
-Prefer `1` or `1.x.y` in production. The `latest` tag moves to each new stable release and may pick up breaking changes in a future major release, so it is not recommended in production. The `edge` tag tracks the latest unreleased development build.
+Prefer versioned tags in production. Only `edge` and tags pointing to the latest stable release are supported. The `latest` tag moves to each new stable release and may pick up breaking changes in a future major release, so it is not recommended in production. The `edge` tag tracks the latest unreleased development build.
