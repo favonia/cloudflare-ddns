@@ -2,11 +2,7 @@
 
 ## Supported Versions
 
-| Surface | Docker tags | Supported | Notes |
-| -- | -- | -- | -- |
-| latest development build | `edge` | ✅ |  |
-| latest stable major version | `1` | ✅ | includes `latest` and other equivalent tags |
-| other versions | all other tags | ❌ |  |
+Only `edge` and the latest stable release are supported. This includes `latest` and any `X`, `X.Y`, or `X.Y.Z` tags pointing to that release.
 
 ## Reporting a Vulnerability
 

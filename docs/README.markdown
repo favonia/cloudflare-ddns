@@ -12,6 +12,8 @@ This directory holds the public documentation set beyond the top-level `README.m
 
 For `docs/design/`, start with [`docs/design/README.markdown`](design/README.markdown).
 
+Image tag choices are documented in [`README.markdown`](../README.markdown) and [`build/SUMMARY.markdown`](../build/SUMMARY.markdown), the Docker Hub and Artifact Hub description. Their support scope is defined in [`docs/SECURITY.md`](SECURITY.md).
+
 <a id="punctuation"></a>
 
 ## Punctuation

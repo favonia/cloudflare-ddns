@@ -131,13 +131,16 @@ Incorporate the following fragment into the compose file (typically `docker-comp
 services:
   cloudflare-ddns:
     image: favonia/cloudflare-ddns:1
-    # Prefer "1" or "1.x.y" in production.
+    # Prefer versioned tags in production.
     #
     # - "1" tracks the latest stable release whose major version is 1
+    # - "1.x" (unreleased) tracks stable patch releases within one minor version
     # - "1.x.y" pins one specific stable version
     # - "latest" moves to each new stable release and may pick up breaking
     #   changes in a future major release, so it is not recommended in production
     # - "edge" tracks the latest unreleased development build
+    #
+    # Only "edge" and tags pointing to the latest stable release are supported.
     network_mode: host
     # Optional. This bypasses network isolation and makes IPv6 easier.
     # See "Use IPv6 without sharing the host network".
