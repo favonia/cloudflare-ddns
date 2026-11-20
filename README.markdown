@@ -27,7 +27,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 ### 🔔 Integration with Notification Services
 
 - 🩺 The updater can report to [Healthchecks](https://healthchecks.io) or [Uptime Kuma](https://uptime.kuma.pet) so that you receive notifications when it fails to update IP addresses.
-- 📣 The updater can also actively update you via any service supported by the [shoutrrr library](https://containrrr.dev/shoutrrr/), including emails, major notification services, major messaging platforms, and generic webhooks.
+- 📣 The updater can also actively update you via any service supported by the [shoutrrr library](https://shoutrrr.nickfedor.com), including emails, major notification services, major messaging platforms, and generic webhooks.
 
 ### 🧱 Reliability
 
@@ -65,7 +65,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
     <li><a href="https://github.com/robfig/cron">cron</a>: parsing of Cron expressions.</li>
     <li><a href="https://github.com/hashicorp/go-retryablehttp">go-retryablehttp</a>: HTTP clients with retries and exponential backoff.</li>
     <li><a href="https://github.com/google/go-querystring">go-querystring</a>: library to construct URL query parameters.</li>
-    <li><a href="https://github.com/containrrr/shoutrrr">shoutrrr</a>: notification library for sending general updates.</li>
+    <li><a href="https://github.com/nicholas-fedor/shoutrrr">shoutrrr</a>: notification library for sending general updates.</li>
     <li><a href="https://github.com/jellydator/ttlcache">ttlcache</a>: in-memory cache to hold Cloudflare API responses.</li>
     <li><a href="https://pkg.go.dev/golang.org/x/net">x/net</a>: official Go supplementary packages for domain handling and low-level DNS support.</li>
     <li><a href="https://pkg.go.dev/golang.org/x/text">x/text</a>: official Go supplementary packages for locale-aware text handling.</li>
@@ -746,11 +746,19 @@ See [Exit Status](#exit-status) for how the updater reports success or failure.
 
 > 💡 If your network doesn’t support IPv6, set `IP6_PROVIDER=none` to stop managing IPv6. This will prevent the updater from reporting failures in detecting IPv6 addresses to monitoring services. Similarly, set `IP4_PROVIDER=none` if your network doesn’t support IPv4.
 
+> **Migration note:** This updater now uses the
+> [Shoutrrr fork](https://github.com/nicholas-fedor/shoutrrr).
+> Some notification services have changed their configuration requirements.
+> In particular, Microsoft Teams users must migrate from Office 365 Connectors
+> to Power Automate workflows. Review the
+> [Shoutrrr supported services](https://github.com/nicholas-fedor/shoutrrr/#supported-services)
+> documentation before upgrading.
+
 | Name | Meaning |
 | -- | -- |
 | `HEALTHCHECKS` | <p>The [Healthchecks ping URL](https://healthchecks.io/docs/) to ping when the updater successfully updates IP addresses, such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>`</p><p>⚠️ The ping schedule should match the update schedule specified by `UPDATE_CRON`.<br/>🤖 The updater can work with _any_ server following the [same Healthchecks protocol](https://healthchecks.io/docs/http_api/), including self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater works regardless whether the POST-only mode is enabled.</p> |
 | `UPTIMEKUMA` | <p>The Uptime Kuma’s Push URL to ping when the updater successfully updates IP addresses, such as `https://<host>/push/<id>`. You can directly copy the “Push URL” from the Uptime Kuma configuration page.</p><p>⚠️ The “Heartbeat Interval” should match the update schedule specified by `UPDATE_CRON`.</p> |
-| `SHOUTRRR` | <p>Newline-separated [shoutrrr URLs](https://containrrr.dev/shoutrrr/latest/services/overview/) to which the updater sends notifications of IP address changes and other events. In other words, put one URL on each line. Blank lines and lines whose first non-whitespace character is `#` are ignored. Each shoutrrr URL represents a notification service; for example, `discord://<token>@<id>` means sending messages to Discord. If one URL needs spaces, percent-encode them to help the updater parse URLs.</p><p>If you configure this value via YAML, prefer <a href="https://yaml-multiline.info/">literal block style <code>\|</code></a> over <a href="https://yaml-multiline.info/">folded style <code>></code></a>.</p> |
+| `SHOUTRRR` | <p>Newline-separated [shoutrrr supported services](https://github.com/nicholas-fedor/shoutrrr/#supported-services) to which the updater sends notifications of IP address changes and other events. In other words, put one URL on each line. Blank lines and lines whose first non-whitespace character is `#` are ignored. Each shoutrrr URL represents a notification service; for example, `discord://<token>@<id>` means sending messages to Discord. If one URL needs spaces, percent-encode them to help the updater parse URLs.</p><p>If you configure this value via YAML, prefer <a href="https://yaml-multiline.info/">literal block style <code>\|</code></a> over <a href="https://yaml-multiline.info/">folded style <code>></code></a>.</p> |
 | `SHOUTRRR_FILE` (available since version 1.17.0) | <p>An absolute path to a file containing shoutrrr URLs, one per line. This is the file version of `SHOUTRRR`, useful for keeping URLs that embed secret tokens out of the environment (for example with [Docker secrets](https://docs.docker.com/compose/how-tos/use-secrets/)).</p><p>Blank lines and lines whose first non-whitespace character is `#` are ignored. If both `SHOUTRRR` and `SHOUTRRR_FILE` are set, they must specify the same URLs (order does not matter) or the updater refuses to start.</p><p>⚠️ The file must be readable by the user configured by `user: "UID:GID"`.</p> |
 
 </details>
