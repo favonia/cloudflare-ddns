@@ -14,9 +14,8 @@ func TestNewAcceptsHandle(t *testing.T) {
 	t.Parallel()
 
 	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
 	mockHandle := mocks.NewMockHandle(mockCtrl)
 
-	s := setter.New(mockPP, mockHandle)
+	s := setter.New(mockHandle)
 	require.NotNil(t, s)
 }

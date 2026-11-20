@@ -101,6 +101,7 @@ func Bindings[V any](m map[Family]V) iter.Seq2[Family, V] {
 }
 
 // DescribeBadAddress reports whether the address is unsuitable as a DNS/WAF target.
+// An invalid (zero) address is unsuitable.
 // If unsuitable, it returns a predicate phrase suitable for "(subject) %s"
 // (e.g., "is a loopback address") and true.
 // The caller is responsible for formatting the full message with context.
@@ -121,8 +122,8 @@ func DescribeBadAddress(ip netip.Addr) (string, bool) {
 	case ip == netip.AddrFrom4([4]byte{255, 255, 255, 255}):
 		return "is a broadcast address", true
 	case !ip.IsGlobalUnicast():
-		// Safety net: all known non-global-unicast cases are handled above.
-		// If this fires, consider adding an explicit case.
+		// Includes the invalid zero address; other known non-global-unicast
+		// categories have more specific descriptions above.
 		return "is not a global unicast address", true
 	default:
 		return "", false

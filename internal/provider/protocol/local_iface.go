@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/netip"
+	"slices"
 
 	"github.com/favonia/cloudflare-ddns/internal/ipnet"
 	"github.com/favonia/cloudflare-ddns/internal/pp"
@@ -101,11 +102,11 @@ func selectAndNormalizeInterfaceIPs(
 		return NewUnavailableDetectionResult()
 	}
 
-	rawEntries, ok := NormalizeDetectedRawIPs(ppfmt, ipFamily, defaultPrefixLen, ips)
-	if !ok {
-		return NewUnavailableDetectionResult()
-	}
-	return NewKnownDetectionResult(rawEntries)
+	// Selection above establishes valid, unmapped, unzoned addresses in this family.
+	// Only set canonicalization and lifting remain; do not validate them twice.
+	slices.SortFunc(ips, netip.Addr.Compare)
+	ips = slices.Compact(ips)
+	return NewKnownDetectionResult(ipnet.LiftValidatedIPsToRawEntries(ips, defaultPrefixLen))
 }
 
 // GetRawData detects raw data from unicast addresses assigned to a network
@@ -119,11 +120,21 @@ func (p LocalWithInterface) GetRawData(
 		return NewUnavailableDetectionResult()
 	}
 
-	addrs, err := iface.Addrs()
+	return detectInterfaceIPs(ppfmt, p.InterfaceName, ipFamily, defaultPrefixLen, iface.Addrs)
+}
+
+// detectInterfaceIPs reads one interface's addresses and applies local detection
+// selection. readAddresses supplies the net.Interface.Addrs contract; any error
+// makes the whole observation unavailable, even if addresses accompany the error.
+func detectInterfaceIPs(
+	ppfmt pp.PP, iface string, ipFamily ipnet.Family, defaultPrefixLen int,
+	readAddresses func() ([]net.Addr, error),
+) DetectionResult {
+	addrs, err := readAddresses()
 	if err != nil {
-		ppfmt.Noticef(pp.EmojiImpossible, "Failed to list unicast addresses of interface %s: %v", p.InterfaceName, err)
+		ppfmt.Noticef(pp.EmojiImpossible, "Failed to list unicast addresses of interface %s: %v", iface, err)
 		return NewUnavailableDetectionResult()
 	}
 
-	return selectAndNormalizeInterfaceIPs(ppfmt, p.InterfaceName, ipFamily, defaultPrefixLen, addrs)
+	return selectAndNormalizeInterfaceIPs(ppfmt, iface, ipFamily, defaultPrefixLen, addrs)
 }

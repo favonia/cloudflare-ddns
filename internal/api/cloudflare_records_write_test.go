@@ -94,7 +94,7 @@ func TestDeleteRecord(t *testing.T) {
 				drh := newDeleteRecordHandler(t, f.serveMux, "record1", "::1")
 				drh.setRequestLimit(tc.deleteRequestLimit)
 
-				ok := f.handle.DeleteRecord(context.Background(), f.newPreparedPP(tc.prepareMocks), ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false)
+				ok := f.handle.DeleteRecord(context.Background(), f.newPreparedPP(tc.prepareMocks), ipnet.IP6, domain.FQDN("sub.test.org"), "record1", false).Status == api.MutationCompleted
 				require.Equal(t, tc.ok, ok)
 				assertHandlersExhausted(t, zh, lrh, drh)
 
@@ -313,7 +313,7 @@ func TestUpdateRecord(t *testing.T) {
 				urh.setRequestLimit(tc.updateRequestLimit)
 
 				ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-					"record1", mustIP("::2"), tc.desiredParams)
+					"record1", mustIP("::2"), tc.desiredParams).Status == api.MutationCompleted
 				require.Equal(t, tc.ok, ok)
 				assertHandlersExhausted(t, zh, lrh, urh)
 
@@ -472,7 +472,7 @@ func TestCreateRecord(t *testing.T) {
 				crh.setRequestLimit(tc.createRequestLimit)
 
 				f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
-				actualID, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+				actualID, ok := createRecordOutcome(f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params))
 				require.Equal(t, tc.ok, ok)
 				if ok {
 					require.Equal(t, api.ID("record1"), actualID)
@@ -508,7 +508,7 @@ func TestCreateRecordWithTags(t *testing.T) {
 			[]string{"team:ddns", "Env:Prod"})
 		crh.setRequestLimit(1)
 
-		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+		id, ok := createRecordOutcome(f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params))
 		require.True(t, ok)
 		require.Equal(t, api.ID("record1"), id)
 		assertHandlersExhausted(t, zh, lrh, crh)
@@ -542,7 +542,7 @@ func TestCreateRecordWarnsOnlyForNewUndocumentedResponseTags(t *testing.T) {
 		crh := newCreateRecordHandlerWithParams(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", params, responseParams)
 		crh.setRequestLimit(1)
 
-		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+		id, ok := createRecordOutcome(f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params))
 		require.True(t, ok)
 		require.Equal(t, api.ID("record1"), id)
 		assertHandlersExhausted(t, zh, lrh, crh)
@@ -568,7 +568,7 @@ func TestCreateRecordDoesNotWarnForRequestOwnedUndocumentedTags(t *testing.T) {
 		crh := newCreateRecordHandlerWithParams(t, f.serveMux, "record1", ipnet.IP6, "sub.test.org", "::1", params, params)
 		crh.setRequestLimit(1)
 
-		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+		id, ok := createRecordOutcome(f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params))
 		require.True(t, ok)
 		require.Equal(t, api.ID("record1"), id)
 		assertHandlersExhausted(t, zh, lrh, crh)
@@ -603,7 +603,7 @@ func TestCreateRecordManagedCacheSkipsUnmanagedComment(t *testing.T) {
 		require.False(t, cached)
 		require.Empty(t, rs)
 
-		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+		id, ok := createRecordOutcome(f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params))
 		require.True(t, ok)
 		require.Equal(t, api.ID("record1"), id)
 
@@ -660,9 +660,9 @@ func TestCreateRecordManagedCachePrependsCreatedRecord(t *testing.T) {
 			},
 		}, rs)
 
-		id, ok := f.handle.CreateRecord(
+		id, ok := createRecordOutcome(f.handle.CreateRecord(
 			context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), createParams,
-		)
+		))
 		require.True(t, ok)
 		require.Equal(t, api.ID("record1"), id)
 
@@ -718,7 +718,7 @@ func TestCreateRecordManagedCacheUsesDesiredMetadataEvenIfCreateResponseDiffers(
 		require.False(t, cached)
 		require.Empty(t, rs)
 
-		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), requestParams)
+		id, ok := createRecordOutcome(f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), requestParams))
 		require.True(t, ok)
 		require.Equal(t, api.ID("record1"), id)
 
@@ -771,7 +771,7 @@ func TestCreateRecordFailureInvalidatesManagedCache(t *testing.T) {
 		require.False(t, cached)
 		require.Equal(t, []api.Record{{ID: "record1", IP: mustIP("::2"), RecordParams: params}}, rs)
 
-		id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+		id, ok := createRecordOutcome(f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params))
 		require.False(t, ok)
 		require.Zero(t, id)
 
@@ -829,9 +829,11 @@ func TestUpdateRecordManagedCacheDropsNowUnmanagedRecord(t *testing.T) {
 			{ID: "record1", IP: mustIP("::1"), RecordParams: managedParams},
 		}, rs)
 
-		ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
+		result := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
 			"record1", mustIP("::2"), managedParams)
-		require.True(t, ok)
+		require.Equal(t, api.MutationCompleted, result.Status)
+		require.Equal(t, api.MembershipUnmanaged, result.Membership)
+		require.Equal(t, api.RecordFact{ID: "record1", IP: mustIP("::2")}, result.Record)
 
 		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), managedParams)
 		require.True(t, ok)
@@ -867,7 +869,7 @@ func TestUpdateRecordWarnsOnlyForNewUndocumentedResponseTags(t *testing.T) {
 		urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", params, responseParams)
 		urh.setRequestLimit(1)
 
-		ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"), params)
+		ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"), params).Status == api.MutationCompleted
 		require.True(t, ok)
 		assertHandlersExhausted(t, zh, urh)
 	})
@@ -891,7 +893,7 @@ func TestUpdateRecordDoesNotWarnForRequestOwnedUndocumentedTags(t *testing.T) {
 		urh := newUpdateRecordHandler(t, f.serveMux, "record1", "::2", "::2", params, params)
 		urh.setRequestLimit(1)
 
-		ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"), params)
+		ok := f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), "record1", mustIP("::2"), params).Status == api.MutationCompleted
 		require.True(t, ok)
 		assertHandlersExhausted(t, zh, urh)
 	})
@@ -932,7 +934,7 @@ func TestUpdateRecordManagedCachePrependsMissingRecord(t *testing.T) {
 		}, rs)
 
 		ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-			"record1", mustIP("::2"), params)
+			"record1", mustIP("::2"), params).Status == api.MutationCompleted
 		require.True(t, ok)
 
 		rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
@@ -987,11 +989,11 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 			}, rs)
 
 			ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-				"record1", mustIP("::2"), params)
+				"record1", mustIP("::2"), params).Status == api.MutationCompleted
 			require.True(t, ok)
 
 			ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-				"record2", api.RegularDeletionMode)
+				"record2", api.RegularDeletionMode).Status == api.MutationCompleted
 			require.True(t, ok)
 
 			rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
@@ -1034,12 +1036,12 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 			require.False(t, cached)
 			require.Empty(t, rs)
 
-			id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params)
+			id, ok := createRecordOutcome(f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::1"), params))
 			require.True(t, ok)
 			require.Equal(t, api.ID("record1"), id)
 
 			ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-				"record1", api.RegularDeletionMode)
+				"record1", api.RegularDeletionMode).Status == api.MutationCompleted
 			require.True(t, ok)
 
 			rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)
@@ -1098,15 +1100,15 @@ func TestRecordWriteSequenceAfterCachedList(t *testing.T) {
 			}, rs)
 
 			ok = f.handle.UpdateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-				"record1", mustIP("::2"), params)
+				"record1", mustIP("::2"), params).Status == api.MutationCompleted
 			require.True(t, ok)
 
-			id, ok := f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::4"), params)
+			id, ok := createRecordOutcome(f.handle.CreateRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), mustIP("::4"), params))
 			require.True(t, ok)
 			require.Equal(t, api.ID("record3"), id)
 
 			ok = f.handle.DeleteRecord(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"),
-				"record2", api.RegularDeletionMode)
+				"record2", api.RegularDeletionMode).Status == api.MutationCompleted
 			require.True(t, ok)
 
 			rs, cached, ok = f.handle.ListRecords(context.Background(), mockPP, ipnet.IP6, domain.FQDN("sub.test.org"), params)

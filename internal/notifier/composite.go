@@ -11,7 +11,8 @@ type Composed []Notifier
 
 var _ Notifier = Composed{}
 
-// NewComposed creates a new composed notifier.
+// NewComposed creates a composed notifier, ignoring nil arguments and flattening
+// children constructed with NewComposed.
 func NewComposed(nots ...Notifier) Composed {
 	ns := make([]Notifier, 0, len(nots))
 	for _, n := range nots {
