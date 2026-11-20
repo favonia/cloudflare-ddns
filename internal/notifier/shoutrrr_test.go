@@ -3,11 +3,12 @@
 package notifier_test
 
 import (
+	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -83,23 +84,67 @@ outer:
 func TestShoutrrrInitializationErrorDoesNotExposeCredentials(t *testing.T) {
 	t.Parallel()
 
-	const secret = "SensitiveToken123"
+	const secret = "ASensitive12345"
+	const validURL = "gotify://host:80/path/" + secret
 
-	mockCtrl := gomock.NewController(t)
-	mockPP := mocks.NewMockPP(mockCtrl)
+	var output bytes.Buffer
+	ppfmt := pp.NewDefault(&output)
+	_, ok := notifier.NewShoutrrr(ppfmt, []string{validURL})
+	require.True(t, ok, "the credential-bearing URL must be valid by itself: %s", output.String())
 
-	mockPP.EXPECT().
-		Noticef(pp.EmojiUserError, "Failed to set up Shoutrrr notification services: %v", gomock.Any()).
-		Do(func(_ pp.Emoji, format string, args ...any) {
-			require.NotContains(t, fmt.Sprintf(format, args...), secret)
-		})
+	for _, urls := range [][]string{
+		{validURL, "invalid-service://host"},
+		{"invalid-service://host", validURL},
+	} {
+		output.Reset()
+		_, ok = notifier.NewShoutrrr(ppfmt, urls)
+		require.False(t, ok)
+		require.Contains(t, output.String(), "Failed to set up Shoutrrr notification services")
+		require.NotContains(t, output.String(), secret)
+	}
+}
 
-	_, ok := notifier.NewShoutrrr(mockPP, []string{
-		"gotify://host:80/path/Aaa." + secret + ".ccc.ddd",
-		"gotify://host:80/path/invalid",
-	})
+// Keep the wire format compatible with Zulip before 9.0. Shoutrrr v0.24.0
+// sent type=channel, which those servers reject even for an unchanged URL.
+func TestShoutrrrSendLegacyZulip(t *testing.T) {
+	t.Parallel()
 
-	require.False(t, ok)
+	notification := notifier.NewNotificationf(notifier.KindUpdate, "hello")
+	var delivered atomic.Int32
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/register":
+			_, _ = io.WriteString(w, `{"result":"success","queue_id":"test-queue","max_message_length":10000,"max_topic_length":60}`)
+		case "/api/v1/events":
+			assert.Equal(t, http.MethodDelete, r.Method)
+			_, _ = io.WriteString(w, `{"result":"success"}`)
+		case "/api/v1/messages":
+			if !assert.Equal(t, http.MethodPost, r.Method) || !assert.NoError(t, r.ParseForm()) {
+				panic(http.ErrAbortHandler)
+			}
+			if r.PostForm.Get("type") != "stream" {
+				http.Error(w, "unsupported message type", http.StatusBadRequest)
+				return
+			}
+			assert.Equal(t, "updates", r.PostForm.Get("to"))
+			assert.Equal(t, "DDNS", r.PostForm.Get("topic"))
+			assert.Equal(t, notification.Format(), r.PostForm.Get("content"))
+			delivered.Add(1)
+			_, _ = io.WriteString(w, `{"result":"success","id":1}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	var output bytes.Buffer
+	ppfmt := pp.NewDefault(&output)
+	serviceURL := "zulip://bot%40example.com:token@" + strings.TrimPrefix(server.URL, "https://") +
+		"?stream=updates&topic=DDNS&skiptlsverify=yes"
+	s, ok := notifier.NewShoutrrr(ppfmt, []string{serviceURL})
+	require.True(t, ok, output.String())
+	require.True(t, s.Send(context.Background(), ppfmt, notification), output.String())
+	require.Equal(t, int32(1), delivered.Load())
 }
 
 func TestShoutrrrSend(t *testing.T) {

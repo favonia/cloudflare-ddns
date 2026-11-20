@@ -37,6 +37,7 @@ func describeShoutrrrService(ppfmt pp.PP, proto string) string {
 		"smtp":          "Email",
 		"gotify":        "Gotify",
 		"googlechat":    "Google Chat",
+		"hangouts":      "Google Chat",
 		"homeassistant": "Home Assistant",
 		"ifttt":         "IFTTT",
 		"join":          "Join",
@@ -45,6 +46,7 @@ func describeShoutrrrService(ppfmt pp.PP, proto string) string {
 		"mattermost":    "Mattermost",
 		"matrix":        "Matrix",
 		"mqtt":          "MQTT",
+		"mqtts":         "MQTT",
 		"notifiarr":     "Notifiarr",
 		"ntfy":          "Ntfy",
 		"opsgenie":      "OpsGenie",
@@ -60,6 +62,7 @@ func describeShoutrrrService(ppfmt pp.PP, proto string) string {
 		"twilio":        "Twilio",
 		"wecom":         "WeCom",
 		"xmpp":          "XMPP",
+		"xmpps":         "XMPP",
 		"zulip":         "Zulip Chat",
 		"generic":       "Generic",
 	}[proto]

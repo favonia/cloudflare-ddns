@@ -12,7 +12,7 @@ require (
 	github.com/google/go-querystring v1.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/jellydator/ttlcache/v3 v3.4.1
-	github.com/nicholas-fedor/shoutrrr v0.24.0
+	github.com/nicholas-fedor/shoutrrr v0.25.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.12.1
 	go.uber.org/mock v0.6.0
