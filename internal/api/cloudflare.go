@@ -18,7 +18,7 @@ type wafListMeta struct {
 	Description string
 }
 
-// cloudflareCache holds the previous repsonses from the Cloudflare API.
+// cloudflareCache holds the previous responses from the Cloudflare API.
 type cloudflareCache = struct {
 	// domains to zone IDs
 	listZones    *ttlcache.Cache[string, []zoneMeta] // zone names to their zone/account IDs
