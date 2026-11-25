@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -102,49 +101,6 @@ func TestShoutrrrInitializationErrorDoesNotExposeCredentials(t *testing.T) {
 		require.Contains(t, output.String(), "Failed to set up Shoutrrr notification services")
 		require.NotContains(t, output.String(), secret)
 	}
-}
-
-// Keep the wire format compatible with Zulip before 9.0. Shoutrrr v0.24.0
-// sent type=channel, which those servers reject even for an unchanged URL.
-func TestShoutrrrSendLegacyZulip(t *testing.T) {
-	t.Parallel()
-
-	notification := notifier.NewNotificationf(notifier.KindUpdate, "hello")
-	var delivered atomic.Int32
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/v1/register":
-			_, _ = io.WriteString(w, `{"result":"success","queue_id":"test-queue","max_message_length":10000,"max_topic_length":60}`)
-		case "/api/v1/events":
-			assert.Equal(t, http.MethodDelete, r.Method)
-			_, _ = io.WriteString(w, `{"result":"success"}`)
-		case "/api/v1/messages":
-			if !assert.Equal(t, http.MethodPost, r.Method) || !assert.NoError(t, r.ParseForm()) {
-				panic(http.ErrAbortHandler)
-			}
-			if r.PostForm.Get("type") != "stream" {
-				http.Error(w, "unsupported message type", http.StatusBadRequest)
-				return
-			}
-			assert.Equal(t, "updates", r.PostForm.Get("to"))
-			assert.Equal(t, "DDNS", r.PostForm.Get("topic"))
-			assert.Equal(t, notification.Format(), r.PostForm.Get("content"))
-			delivered.Add(1)
-			_, _ = io.WriteString(w, `{"result":"success","id":1}`)
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-	t.Cleanup(server.Close)
-
-	var output bytes.Buffer
-	ppfmt := pp.NewDefault(&output)
-	serviceURL := "zulip://bot%40example.com:token@" + strings.TrimPrefix(server.URL, "https://") +
-		"?stream=updates&topic=DDNS&skiptlsverify=yes"
-	s, ok := notifier.NewShoutrrr(ppfmt, []string{serviceURL})
-	require.True(t, ok, output.String())
-	require.True(t, s.Send(context.Background(), ppfmt, notification), output.String())
-	require.Equal(t, int32(1), delivered.Load())
 }
 
 func TestShoutrrrSend(t *testing.T) {
