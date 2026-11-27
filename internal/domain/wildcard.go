@@ -4,7 +4,7 @@ package domain
 // under the zone. For example, Wildcard("example.org") represents *.example.org.
 type Wildcard string
 
-// DNSNameASCII retruns the ASCII form of the wildcard domain.
+// DNSNameASCII returns the ASCII form of the wildcard domain.
 func (w Wildcard) DNSNameASCII() string {
 	if string(w) == "" {
 		return "*"

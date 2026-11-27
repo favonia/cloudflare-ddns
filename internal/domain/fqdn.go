@@ -3,7 +3,7 @@ package domain
 // FQDN is a fully qualified domain in its ASCII form.
 type FQDN string
 
-// DNSNameASCII retruns the ASCII form of the FQDN.
+// DNSNameASCII returns the ASCII form of the FQDN.
 func (f FQDN) DNSNameASCII() string { return string(f) }
 
 // String gives the canonical, round-trippable form of the FQDN. The empty
