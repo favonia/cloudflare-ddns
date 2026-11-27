@@ -8,9 +8,7 @@ import (
 
 // CheckRoot checks whether the effective user ID is 0 and whether PUID or PGID is set.
 func CheckRoot(ppfmt pp.PP) {
-	if syscall.Geteuid() == 0 {
-		ppfmt.Noticef(pp.EmojiUserWarning, "You are running this updater as root, which is usually a bad idea")
-	}
+	checkEffectiveUID(ppfmt, syscall.Geteuid())
 
 	useDeprecated := false
 	if val := getenv("PUID"); val != "" {
@@ -27,5 +25,12 @@ func CheckRoot(ppfmt pp.PP) {
 	}
 	if useDeprecated {
 		ppfmt.InfoOncef(pp.MessageUpdateDockerTemplate, pp.EmojiHint, "See %s for the new Docker template", pp.ManualURL)
+	}
+}
+
+// checkEffectiveUID warns only when the supplied effective user ID is root.
+func checkEffectiveUID(ppfmt pp.PP, uid int) {
+	if uid == 0 {
+		ppfmt.Noticef(pp.EmojiUserWarning, "You are running this updater as root, which is usually a bad idea")
 	}
 }

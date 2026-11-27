@@ -1,6 +1,6 @@
 # Design Documents
 
-This directory holds durable design notes for future developers.
+This directory holds current normative design contracts and guidance for future developers.
 
 Use this file as a retrieval map. Do not read the whole tree by default.
 
@@ -29,6 +29,7 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 
 ### Supporting feature models
 
+- [`features/notification-model.markdown`](features/notification-model.markdown): read when deciding notification triggers, per-scope first-known address coverage, fresh-observation inference, lifecycle composition, or evidence and uncertainty claims.
 - [`features/detection-filter.markdown`](features/detection-filter.markdown): read when changing `IP4_DETECTION_FILTER`, `IP6_DETECTION_FILTER`, filter syntax, filter placement, or filter-caused abort behavior.
 - [`features/provider-raw-data-contract.markdown`](features/provider-raw-data-contract.markdown): read when changing provider-side IP acceptance, rejection, output shape, or raw-data contracts.
 - [`features/network-security-model.markdown`](features/network-security-model.markdown): read when changing public-IP detection security behavior or security claims in docs.
@@ -40,15 +41,16 @@ Use this file as a retrieval map. Do not read the whole tree by default.
 - [`features/managed-record-ownership.markdown`](features/managed-record-ownership.markdown): read when changing the DNS instantiation of the shared ownership and reconciliation models, including DNS attribute-based ownership, filtering, or metadata reconciliation.
 - [`features/managed-waf-item-ownership.markdown`](features/managed-waf-item-ownership.markdown): read when changing the WAF instantiation of the shared ownership and reconciliation models, including WAF attribute-based ownership, filtering, or deletion-target consequences.
 
+## Rationale
+
+Rationale is non-normative: it records evidence, assumptions, alternatives, and tradeoffs used to evaluate or challenge design decisions. See [the rationale index](../rationale/README.markdown), including [Notification Messages](../rationale/notification-messages.markdown) for notification presentation choices.
+
 ## Directory Scope
 
-Use `docs/design/` only for durable design information that is broader than one local edit.
-
-Keep these repeatedly read, normative notes concise: retain governing decisions and necessary rationale, with local implementation details documented in code.
+Use `docs/design/` for durable shared contracts, architectural decisions, and reusable developer guidance. Keep unit-specific usage contracts with the unit’s API.
 
 - use `core/` for project-wide principles and architecture that affect many tasks
 - use `guides/` for shared editing or explanation rules reused across unrelated topics
 - use `features/` for durable feature contracts, invariants, and scope boundaries
-- update an existing note before adding a new one
-- add a new note only when no existing note can own the information cleanly and the information is durable, cross-file, and likely to matter again
+- update an existing owner when possible; add a note only when none fits
 - keep temporary rollout notes, branch-local rationale, review notes, and one-file heuristics out of `docs/design/`
