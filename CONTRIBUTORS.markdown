@@ -5,6 +5,7 @@
 - [@JvdMaat](https://github.com/JvdMaat) helped improve [README](./README.markdown) and internal code comments.
 - [@mohsenrezaeithe (Mohsen Rezaei)](https://github.com/mohsenrezaeithe) helped improve [README](./README.markdown).
 - [@vaayne (LiuVaayne)](https://github.com/vaayne) helped improve [Dockerfile](./Dockerfile).
+- [@mannkd (Keith Mann)](https://github.com/mannkd) contributed the migration to the nicholas-fedor fork of Shoutrrr.
 
 # Past Contributors
 

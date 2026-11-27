@@ -3,6 +3,7 @@
 package notifier_test
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net/http"
@@ -58,7 +59,7 @@ func TestShoutrrrDescribe(t *testing.T) {
 	mockPP := mocks.NewMockPP(mockCtrl)
 	m, ok := notifier.NewShoutrrr(mockPP, []string{
 		"generic://localhost/",
-		"gotify://host:80/path/tokentoken",
+		"gotify://host:80/path/Aaa.bbb.ccc.ddd",
 		"ifttt://hey/?events=1",
 	})
 	require.True(t, ok)
@@ -77,6 +78,29 @@ outer:
 		}
 	}
 	require.Equal(t, 2, count)
+}
+
+func TestShoutrrrInitializationErrorDoesNotExposeCredentials(t *testing.T) {
+	t.Parallel()
+
+	const secret = "ASensitive12345"
+	const validURL = "gotify://host:80/path/" + secret
+
+	var output bytes.Buffer
+	ppfmt := pp.NewDefault(&output)
+	_, ok := notifier.NewShoutrrr(ppfmt, []string{validURL})
+	require.True(t, ok, "the credential-bearing URL must be valid by itself: %s", output.String())
+
+	for _, urls := range [][]string{
+		{validURL, "invalid-service://host"},
+		{"invalid-service://host", validURL},
+	} {
+		output.Reset()
+		_, ok = notifier.NewShoutrrr(ppfmt, urls)
+		require.False(t, ok)
+		require.Contains(t, output.String(), "Failed to set up Shoutrrr notification services")
+		require.NotContains(t, output.String(), secret)
+	}
 }
 
 func TestShoutrrrSend(t *testing.T) {

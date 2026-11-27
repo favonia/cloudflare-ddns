@@ -27,7 +27,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
 ### 🔔 Integration with Notification Services
 
 - 🩺 The updater can report to [Healthchecks](https://healthchecks.io) or [Uptime Kuma](https://uptime.kuma.pet) so that you receive notifications when it fails to update IP addresses.
-- 📣 The updater can also actively update you via any service supported by the [shoutrrr library](https://containrrr.dev/shoutrrr/), including emails, major notification services, major messaging platforms, and generic webhooks.
+- 📣 The updater can also actively update you via any service supported by [Shoutrrr (nicholas-fedor fork)](https://shoutrrr.nickfedor.com), including emails, major notification services, major messaging platforms, and generic webhooks.
 
 ### 🧱 Reliability
 
@@ -65,7 +65,7 @@ The emoji “🧪” marks experimental features, and the emoji “🤖” marks
     <li><a href="https://github.com/robfig/cron">cron</a>: parsing of Cron expressions.</li>
     <li><a href="https://github.com/hashicorp/go-retryablehttp">go-retryablehttp</a>: HTTP clients with retries and exponential backoff.</li>
     <li><a href="https://github.com/google/go-querystring">go-querystring</a>: library to construct URL query parameters.</li>
-    <li><a href="https://github.com/containrrr/shoutrrr">shoutrrr</a>: notification library for sending general updates.</li>
+    <li><a href="https://github.com/nicholas-fedor/shoutrrr">shoutrrr (nicholas-fedor fork)</a>: notification library for sending general updates.</li>
     <li><a href="https://github.com/jellydator/ttlcache">ttlcache</a>: in-memory cache to hold Cloudflare API responses.</li>
     <li><a href="https://pkg.go.dev/golang.org/x/net">x/net</a>: official Go supplementary packages for domain handling and low-level DNS support.</li>
     <li><a href="https://pkg.go.dev/golang.org/x/text">x/text</a>: official Go supplementary packages for locale-aware text handling.</li>
@@ -750,8 +750,47 @@ See [Exit Status](#exit-status) for how the updater reports success or failure.
 | -- | -- |
 | `HEALTHCHECKS` | <p>The [Healthchecks ping URL](https://healthchecks.io/docs/) to ping when the updater successfully updates IP addresses, such as `https://hc-ping.com/<uuid>` or `https://hc-ping.com/<project-ping-key>/<name-slug>`</p><p>⚠️ The ping schedule should match the update schedule specified by `UPDATE_CRON`.<br/>🤖 The updater can work with _any_ server following the [same Healthchecks protocol](https://healthchecks.io/docs/http_api/), including self-hosted instances of [Healthchecks](https://github.com/healthchecks/healthchecks). Both UUID and Slug URLs are supported, and the updater works regardless whether the POST-only mode is enabled.</p> |
 | `UPTIMEKUMA` | <p>The Uptime Kuma’s Push URL to ping when the updater successfully updates IP addresses, such as `https://<host>/push/<id>`. You can directly copy the “Push URL” from the Uptime Kuma configuration page.</p><p>⚠️ The “Heartbeat Interval” should match the update schedule specified by `UPDATE_CRON`.</p> |
-| `SHOUTRRR` | <p>Newline-separated [shoutrrr URLs](https://containrrr.dev/shoutrrr/latest/services/overview/) to which the updater sends notifications of IP address changes and other events. In other words, put one URL on each line. Blank lines and lines whose first non-whitespace character is `#` are ignored. Each shoutrrr URL represents a notification service; for example, `discord://<token>@<id>` means sending messages to Discord. If one URL needs spaces, percent-encode them to help the updater parse URLs.</p><p>If you configure this value via YAML, prefer <a href="https://yaml-multiline.info/">literal block style <code>\|</code></a> over <a href="https://yaml-multiline.info/">folded style <code>></code></a>.</p> |
-| `SHOUTRRR_FILE` (available since version 1.17.0) | <p>An absolute path to a file containing shoutrrr URLs, one per line. This is the file version of `SHOUTRRR`, useful for keeping URLs that embed secret tokens out of the environment (for example with [Docker secrets](https://docs.docker.com/compose/how-tos/use-secrets/)).</p><p>Blank lines and lines whose first non-whitespace character is `#` are ignored. If both `SHOUTRRR` and `SHOUTRRR_FILE` are set, they must specify the same URLs (order does not matter) or the updater refuses to start.</p><p>⚠️ The file must be readable by the user configured by `user: "UID:GID"`.</p> |
+| `SHOUTRRR` | <p>Newline-separated [Shoutrrr URLs](https://shoutrrr.nickfedor.com/latest/services/overview/) to which the updater sends notifications of IP address changes and other events. In other words, put one URL on each line. Blank lines and lines whose first non-whitespace character is `#` are ignored. Each Shoutrrr URL represents a notification service; for example, `discord://<token>@<id>` means sending messages to Discord. If one URL needs spaces, percent-encode them to help the updater parse URLs.</p><p>If you configure this value via YAML, prefer <a href="https://yaml-multiline.info/">literal block style <code>\|</code></a> over <a href="https://yaml-multiline.info/">folded style <code>></code></a>.</p><p>⚠️ Starting with version (unreleased), `SHOUTRRR` notifications use the [nicholas-fedor fork of Shoutrrr](https://shoutrrr.nickfedor.com). Some existing settings need changes, especially for Teams. See the [migration guide below](#shoutrrr-migration) before upgrading.</p> |
+| `SHOUTRRR_FILE` (available since version 1.17.0) | <p>An absolute path to a file containing Shoutrrr URLs, one per line. This is the file version of `SHOUTRRR`, useful for keeping URLs that embed secret tokens out of the environment (for example with [Docker secrets](https://docs.docker.com/compose/how-tos/use-secrets/)).</p><p>Blank lines and lines whose first non-whitespace character is `#` are ignored. If both `SHOUTRRR` and `SHOUTRRR_FILE` are set, they must specify the same URLs (order does not matter) or the updater refuses to start.</p><p>⚠️ The file must be readable by the user configured by `user: "UID:GID"`.</p> |
+
+<a id="shoutrrr-migration"></a>
+
+<details>
+<summary>Upgrading existing SHOUTRRR settings (unreleased) <sup><em>click to expand</em></sup></summary>
+
+*Summarized by AI; not yet reviewed by the maintainer. This summary may contain errors; use it as an upgrade checklist alongside the linked upstream documentation.*
+
+This guide covers the migration from `containrrr/shoutrrr` v0.8.0 to `nicholas-fedor/shoutrrr` v0.25.0. The fork fixes SMTP messages missing `Message-ID`, which some mail hosts reject, and supports newer notification APIs. Some existing configurations need changes; check the settings below before upgrading.
+
+**Teams:** Microsoft [retired Office 365 Connectors in Teams in May 2026](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/connectors-creating). The fork supports their replacement, Power Automate Workflows, which requires a new webhook URL. Follow [Microsoft’s webhook setup guide](https://support.microsoft.com/en-gb/workflows/send-messages-in-teams-using-incoming-webhooks?nochrome=true) to create a workflow for your channel. Choose the template that allows **“Anyone”** to trigger it; Shoutrrr cannot authenticate as a Microsoft user.
+
+Then follow the fork’s [Teams URL format and encoding example](https://github.com/nicholas-fedor/shoutrrr/blob/v0.25.0/docs/services/chat/teams/index.md) to turn the workflow URL into a `teams://?host=...` URL, and replace the old Teams entry in `SHOUTRRR` or `SHOUTRRR_FILE`. The `host` value must contain the entire workflow URL, percent-encoded, including its `sig` signature. Keep this URL private because it authorizes posting to the workflow.
+
+If you use `color`, replace the old hexadecimal value with a named color such as `attention`; the fork’s Teams documentation lists the supported values.
+
+**Other existing services:**
+
+| Service or setting | What to check when upgrading |
+| -- | -- |
+| SMTP | Use full sender and recipient addresses such as `root@example.com`; bare local names such as `root` are rejected. Commas in recipient display names are not supported. For `auth=OAuth2`, remote SMTP connections must use TLS; plaintext connections are accepted only when the configured server is `localhost`, `127.0.0.1`, or `::1`. |
+| Gotify | Use an application token. Authentication now uses the `X-Gotify-Key` header; if a proxy requires the token in the query, set `useheader=no`. `disabletls=yes` selects HTTP but no longer skips certificate verification after an HTTPS redirect. Trust the server’s certificate, or explicitly set `skiptlsverify=yes` if you intentionally accept an unverified certificate. |
+| Gotify priority | Without `priority`, Gotify now uses the application’s default instead of receiving `0`. Set `priority=0` to retain the previous behavior. Explicit priorities must be between `-2` and `10`. |
+| Pushover | `priority=2` now requests emergency delivery, repeating every 15 minutes for up to an hour unless acknowledged. Set `priority=0` to retain the previous normal-priority behavior, or configure `retry` and `expire` for the intended emergency behavior. Priorities outside `-2`–`2` are rejected. |
+| Discord | Short messages without a `title` may be sent as ordinary messages instead of embeds. Setting `color` alone does not force an embed; set `title` to retain embed formatting. See the fork’s [Discord settings](https://github.com/nicholas-fedor/shoutrrr/blob/v0.25.0/docs/services/chat/discord/index.md). |
+| Generic webhooks | Setting names now match regardless of case. If a webhook query key conflicts with a Shoutrrr setting, prefix it with `__`; for example, use `__Method` for a webhook parameter rather than Shoutrrr’s HTTP method setting. With `template=json`, a configured `title` is now included under `titlekey`. |
+| Generic webhook headers | Without a template or an explicit `contenttype`, both `Content-Type` and `Accept` change from `application/json` to `text/plain`. Set `contenttype=application/json` to keep the previous headers. |
+| Matrix | The homeserver and any reverse proxy must support `/_matrix/client/v3/` endpoints, PUT requests for sending messages, and `Authorization: Bearer` headers instead of an `access_token` query parameter. Password login happens on the first notification, so successful updater startup alone does not verify credentials. A configured `title` is now prepended to the message. |
+| Mattermost | A configured `title` is now prepended to the message. Remove it to preserve the previous message text. |
+| ntfy | For URLs with a base path, such as `ntfy://host/base/topic`, requests now POST JSON to `/base/` with the topic in the body, instead of posting the message text to `/base/topic`. Update reverse-proxy routing or access rules if they only allow the old endpoint. |
+| Pushbullet | A trailing `/` after a target no longer also sends to every device. To send to all devices, configure a URL without a target. |
+| Bark | An omitted or zero `badge` no longer sends a badge value of zero; negative values are rejected. A configured `url` is now included in the notification. The `category` setting is accepted but no longer sent. |
+| Telegram | A configured `title` is now included in every parse mode. A configured thread ID must be a positive integer. |
+
+**HTTP endpoints and proxies:** Use the final webhook endpoint directly. Default HTTP clients reject redirects to another hostname, HTTPS-to-HTTP redirects, and redirects that change the request method, except that HTTP 303 may change the method. A 303 still cannot redirect to another hostname or downgrade HTTPS. Gotify also starts honoring `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY`; check `NO_PROXY` if your Gotify server should be reached directly. Some non-2xx responses that were previously accepted are now reported as notification failures.
+
+**General URL validation:** Avoid specifying the same setting with different capitalization, such as `title` and `Title`, and percent-encode query values correctly. Service URLs are validated more strictly, including ports, required credentials, and service-specific path rules. Some settings that previously failed only when sending now fail during initialization, preventing the updater from starting. After restarting, check the startup logs and verify delivery to each configured service.
+
+</details>
 
 </details>
 
